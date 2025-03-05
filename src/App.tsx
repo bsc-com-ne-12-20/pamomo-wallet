@@ -19,9 +19,9 @@ function App() {
   ]);
 
   const handleLogin = (user, pass) => {
-    if (user === 'admin' && pass === 'admin') {
+    if (user === 'Inno' && pass === 'admin') {
       setIsAuthenticated(true);
-      setUsername('Admin User');
+      setUsername('Innocent Waluza');
       return true;
     }
     return false;

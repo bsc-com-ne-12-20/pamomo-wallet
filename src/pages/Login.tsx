@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Hexagon, User, Lock } from 'lucide-react';
 
 interface LoginProps {
@@ -31,10 +32,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <Hexagon size={64} className="text-[#8928A4]" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Pamomo
+            Pamomo-Agent
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Your Digital Wallet Solution
+            Agent Portal for Digital Wallet Management
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -85,6 +86,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               Sign in
             </button>
           </div>
+
+          <div className="text-center text-sm">
+            <span className="text-gray-600">Don't have an account?</span>{' '}
+            <Link to="/register" className="text-[#8928A4] hover:text-[#7a2391] font-medium">
+              Sign up
+            </Link>
+          </div>
+
           <div className="text-center text-sm text-gray-500">
             <p>Default credentials: admin/admin</p>
           </div>

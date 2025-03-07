@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Card from '../components/Card';
-import { SendIcon, CreditCard, History, DollarSign } from 'lucide-react';
+import { SendIcon, CreditCard, History, DollarSign, PlusCircle } from 'lucide-react';
 
 interface DashboardProps {
   username: string;
@@ -20,7 +20,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">Welcome back, {username}</h2>
-              <p className="text-gray-600">Here's your financial summary</p>
+              <p className="text-gray-600">Pamomo-Agent Dashboard</p>
             </div>
             <div className="mt-4 md:mt-0">
               <div className="bg-[#8928A4] text-white px-6 py-4 rounded-lg">
@@ -31,7 +31,19 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Link to="/deposit" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <div className="bg-purple-100 p-3 rounded-full mr-4">
+                <PlusCircle className="h-6 w-6 text-[#8928A4]" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Deposit Money</h3>
+                <p className="text-gray-600">Add funds for users</p>
+              </div>
+            </div>
+          </Link>
+          
           <Link to="/send" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="bg-purple-100 p-3 rounded-full mr-4">
@@ -91,16 +103,16 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
           <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Stats</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border border-gray-200 rounded-lg p-4">
-              <p className="text-gray-600">Monthly Spending</p>
-              <p className="text-2xl font-bold text-gray-800">$1,250</p>
+              <p className="text-gray-600">Monthly Deposits</p>
+              <p className="text-2xl font-bold text-gray-800">$4,000</p>
             </div>
             <div className="border border-gray-200 rounded-lg p-4">
-              <p className="text-gray-600">Savings</p>
-              <p className="text-2xl font-bold text-gray-800">$3,750</p>
+              <p className="text-gray-600">Total Transactions</p>
+              <p className="text-2xl font-bold text-gray-800">24</p>
             </div>
             <div className="border border-gray-200 rounded-lg p-4">
-              <p className="text-gray-600">Pending Transactions</p>
-              <p className="text-2xl font-bold text-gray-800">2</p>
+              <p className="text-gray-600">Active Users</p>
+              <p className="text-2xl font-bold text-gray-800">18</p>
             </div>
           </div>
         </div>

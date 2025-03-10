@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Hexagon, User, Lock } from 'lucide-react';
+import axios from 'axios';
 
 interface LoginProps {
   onLogin: (username: string, password: string) => boolean;
@@ -10,17 +11,30 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (username.trim() === '' || password.trim() === '') {
       setError('Please enter both username and password');
       return;
     }
 
-    const success = onLogin(username, password);
-    if (!success) {
-      setError('Invalid credentials. Try admin/admin');
+    try {
+      const response = await axios.post('https://mtima.onrender.com/api/v1/dj-rest-auth/login', {
+        username,
+        email: '',
+        password
+      });
+
+      if (response.data.key) {
+        localStorage.setItem('authToken', response.data.key);
+        onLogin(username, password);
+        console.log(response.data.key);
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError('Invalid credentials. Please try again.');
     }
   };
 
@@ -32,10 +46,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <Hexagon size={64} className="text-[#8928A4]" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Pamomo-Agent
+            Pamomo
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Agent Portal for Digital Wallet Management
+            Digital Wallet Management
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -92,10 +106,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <Link to="/register" className="text-[#8928A4] hover:text-[#7a2391] font-medium">
               Sign up
             </Link>
-          </div>
-
-          <div className="text-center text-sm text-gray-500">
-            <p>Default credentials: admin/admin</p>
           </div>
         </form>
       </div>

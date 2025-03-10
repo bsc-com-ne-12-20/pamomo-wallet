@@ -22,15 +22,12 @@ function App() {
     { id: 4, type: 'debit', amount: 500, date: '2025-04-04', description: 'Sent to john@example.com' },
   ]);
 
-  const handleLogin = (user: string, pass: string) => {
-    if (user === 'admin' && pass === 'admin') {
-      setIsAuthenticated(true);
-      setUsername('Admin User');
-      return true;
-    }
-    return false;
+  const handleLogin = (user: string, token: string) => {
+    setIsAuthenticated(true);
+    setUsername(user);
+    localStorage.setItem('authToken', token); // Store token for persistence
   };
-
+  
   const handleRegister = (name: string, email: string, phone: string, password: string) => {
     // In a real application, this would make an API call to create the user
     console.log('Registering user:', { name, email, phone });

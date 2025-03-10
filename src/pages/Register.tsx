@@ -1,24 +1,26 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Hexagon, User, Lock, Mail, Phone } from 'lucide-react';
+import axios from 'axios';
 
 interface RegisterProps {
   onRegister: (name: string, email: string, phone: string, password: string) => boolean;
 }
 
 const Register: React.FC<RegisterProps> = ({ onRegister }) => {
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!name || !email || !phone || !password) {
+    if (!username || !email || !phone || !password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
     }
@@ -37,11 +39,31 @@ const Register: React.FC<RegisterProps> = ({ onRegister }) => {
       return;
     }
 
-    const success = onRegister(name, email, phone, password);
-    if (success) {
-      navigate('/login');
-    } else {
-      setError('Registration failed. Please try again.');
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    try {
+      const response = await axios.post('https://mtima.onrender.com/api/v1/dj-rest-auth/registration/', {
+        username,
+        email,
+        password1: password,
+        password2: confirmPassword
+      });
+
+      if (response.data.key) {
+        localStorage.setItem('authToken', response.data.key);
+        onRegister(username, email, phone, password);
+        navigate('/login');
+      }
+    } catch (err: any) {
+      if (err.response?.data) {
+        const errors = Object.values(err.response.data).flat();
+        setError(errors.join(' '));
+      } else {
+        setError('Registration failed. Please try again.');
+      }
     }
   };
 
@@ -67,14 +89,14 @@ const Register: React.FC<RegisterProps> = ({ onRegister }) => {
                 <User className="h-5 w-5 text-gray-400" />
               </div>
               <input
-                id="name"
-                name="name"
+                id="username"
+                name="username"
                 type="text"
                 required
                 className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-[#8928A4] focus:border-[#8928A4] focus:z-10 sm:text-sm"
-                placeholder="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
 
@@ -123,6 +145,22 @@ const Register: React.FC<RegisterProps> = ({ onRegister }) => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-[#8928A4] focus:border-[#8928A4] focus:z-10 sm:text-sm"
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
           </div>

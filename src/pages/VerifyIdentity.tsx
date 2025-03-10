@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ShieldCheck, ArrowLeft } from 'lucide-react';
+import EsignetSignInButton from '../components/EsignetSignInButton';
 
 interface VerifyIdentityProps {
   username: string;
@@ -76,17 +77,7 @@ const VerifyIdentity: React.FC<VerifyIdentityProps> = ({ username, onLogout, onV
                   <h4 className="font-medium text-gray-900">Digital ID Verification</h4>
                   <p className="text-sm text-gray-600">Quick and secure verification through eSignet</p>
                 </div>
-                <button
-                  onClick={handleVerification}
-                  disabled={isVerifying}
-                  className={`px-6 py-2 rounded-md text-white font-medium transition-all
-                    ${isVerifying 
-                      ? 'bg-orange-400 cursor-not-allowed' 
-                      : 'bg-orange-500 hover:bg-orange-600'
-                    }`}
-                >
-                  {isVerifying ? 'Verifying...' : 'Start with eSignet'}
-                </button>
+                <EsignetSignInButton />
               </div>
 
               <div className="text-center text-sm text-gray-500 mt-4">

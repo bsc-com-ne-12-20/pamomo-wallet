@@ -20,7 +20,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">Welcome back, {username}</h2>
-              <p className="text-gray-600">Pamomo-Agent Dashboard</p>
+              <p className="text-gray-600">Pamomo-Dashboard</p>
             </div>
             <div className="mt-4 md:mt-0">
               <div className="bg-[#8928A4] text-white px-6 py-4 rounded-lg">

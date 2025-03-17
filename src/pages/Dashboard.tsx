@@ -25,7 +25,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
             <div className="mt-4 md:mt-0">
               <div className="bg-[#8928A4] text-white px-6 py-4 rounded-lg">
                 <p className="text-sm">Available Balance</p>
-                <p className="text-3xl font-bold">${balance.toLocaleString()}</p>
+                <p className="text-3xl font-bold">MWK {balance.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -59,7 +59,8 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
           <Link to="/withdraw" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="bg-purple-100 p-3 rounded-full mr-4">
-                <DollarSign className="h-6 w-6 text-[#8928A4]" />
+                {/* <DollarSign className="h-6 w-6 text-[#8928A4]" /> */}
+                <h1 className=" text-[#8928A4]"><b>MWK</b></h1>
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Withdraw Money</h3>

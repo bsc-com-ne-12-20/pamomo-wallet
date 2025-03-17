@@ -140,14 +140,14 @@ function App() {
         } />
         <Route path="/send" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <RequireVerification>
+            {/* <RequireVerification> */}
               <SendMoney 
                 balance={balance} 
                 onSend={handleSendMoney} 
                 username={username}
                 onLogout={handleLogout}
               />
-            </RequireVerification>
+            {/* </RequireVerification> */}
           </ProtectedRoute>
         } />
         <Route path="/withdraw" element={

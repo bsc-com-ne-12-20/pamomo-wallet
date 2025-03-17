@@ -40,7 +40,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ balance, onSend, username, onLogo
 
     const success = onSend(receiver, amountNum);
     if (success) {
-      setSuccess(`Successfully sent $${amountNum} to ${receiver}`);
+      setSuccess(`Successfully sent MK{amountNum} to MK{receiver}`);
       setReceiver('');
       setAmount('');
       setTimeout(() => {
@@ -69,7 +69,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ balance, onSend, username, onLogo
           
           <div className="bg-purple-50 p-4 rounded-lg mb-6">
             <p className="text-sm text-gray-600">Available Balance</p>
-            <p className="text-xl font-bold text-[#8928A4]">${balance.toLocaleString()}</p>
+            <p className="text-xl font-bold text-[#8928A4]">MK{balance.toLocaleString()}</p>
           </div>
           
           <form onSubmit={handleSubmit}>
@@ -99,7 +99,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ balance, onSend, username, onLogo
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   {/* <DollarSign className="h-5 w-5 text-gray-400" /> */}
-                  <h1 className=" text-[#8928A4]"><b>MWK</b></h1>
+                  <h1 className=" text-[#8928A4]"><b>MK</b></h1>
                 </div>
                 <input
                   type="number"

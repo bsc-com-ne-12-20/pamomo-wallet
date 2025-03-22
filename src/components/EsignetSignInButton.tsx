@@ -22,6 +22,7 @@ interface OidcConfig {
   scope: string;
   state: string;
   ui_locales: string;
+  response_type: string;
 }
 
 const EsignetSignInButton: React.FC = () => {
@@ -35,14 +36,15 @@ const EsignetSignInButton: React.FC = () => {
   const oidcConfig: OidcConfig = {
     acr_values:
       "mosip:idp:acr:generated-code mosip:idp:acr:biometrics mosip:idp:acr:static-code",
-    authorizeUri: "https://esignet.collab.mosip.net/v1/esignet/authorize",
+    authorizeUri: "http://localhost:3000/authorize",
     claims_locales: "en",
-    client_id: "88Vjt34c5Twz1oJ",
+    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArVTcO",
     display: "page",
     max_age: 21,
+    response_type: "code",
     nonce: "ere973eieljznge2311",
     prompt: "consent",
-    redirect_uri: "https://securemomo.netlify.com",
+    redirect_uri: "http://localhost:4174",
     scope: "openid profile",
     state: "eree2311",
     ui_locales: "en",

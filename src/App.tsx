@@ -9,6 +9,7 @@ import DepositMoney from './pages/DepositMoney';
 import TransactionHistory from './pages/TransactionHistory';
 import VerifyIdentity from './pages/VerifyIdentity';
 import ProtectedRoute from './components/ProtectedRoute';
+import AuthCallback from './pages/AuthCallback';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -119,6 +120,7 @@ function App() {
             <Navigate to="/dashboard" /> : 
             <Login onLogin={handleLogin} />
         } />
+        <Route path="/callback" element={<AuthCallback />} /> {/* ✅ Handles Esignet callback */}
         <Route path="/register" element={<Register onRegister={handleRegister} />} />
         <Route path="/verify" element={
           //<ProtectedRoute isAuthenticated={isAuthenticated}>

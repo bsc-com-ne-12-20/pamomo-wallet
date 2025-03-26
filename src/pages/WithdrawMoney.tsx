@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { DollarSign, KeyRound, ArrowLeft } from 'lucide-react';
+import axios from 'axios';
 
 interface WithdrawMoneyProps {
   balance: number;
@@ -12,12 +13,12 @@ interface WithdrawMoneyProps {
 
 const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ balance, onWithdraw, username, onLogout }) => {
   const [amount, setAmount] = useState('');
-  const [code, setCode] = useState('');
+  const [code, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -37,18 +38,29 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ balance, onWithdraw, user
       setError('Insufficient balance');
       return;
     }
-
-    const success = onWithdraw(amountNum, code);
-    if (success) {
+    try {
+      const response = await axios.post('https://mtima.onrender.com/api/v1/wtdr/', {
+        email: username, // Send email as part of the request
+        amount: amountNum,
+      });
+      
+      const success = onWithdraw(amountNum, code);
+      if (response.status==201) {
       setSuccess(`Successfully withdrew $${amountNum}`);
       setAmount('');
-      setCode('');
+      setEmail('');
       setTimeout(() => {
         navigate('/dashboard');
       }, 2000);
     } else {
       setError('Withdrawal failed. Please check your withdrawal code (hint: use 1234).');
     }
+    } catch (error) {
+      setError(err.response?.data?.non_field_errors || 'An error occurred. Please try again.');
+      console.error(err);
+    }
+
+    
   };
 
   return (
@@ -109,7 +121,7 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ balance, onWithdraw, user
                   className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
                   placeholder="Enter withdrawal code"
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <p className="mt-1 text-xs text-gray-500">For demo purposes, use code: 1234</p>

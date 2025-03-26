@@ -1,16 +1,53 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Card from '../components/Card';
-import { SendIcon, CreditCard, History, DollarSign, PlusCircle } from 'lucide-react';
+import { SendIcon, PlusCircle, History } from 'lucide-react';
+import axios from 'axios';
 
 interface DashboardProps {
   username: string;
-  balance: number;
   onLogout: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) => {
+const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
+  const [balance, setBalance] = useState<number | null>(null); 
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+
+  /*
+  const response = await fetch('http://127.0.0.1:8000/api/v1/accounts/get-balance/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: email }), // Send email as part of the request body
+          });
+  
+          if (!response.ok) {
+            throw new Error(`Failed to fetch balance: ${response.status}`);
+          }
+  
+          const data = await response.json();
+          setBalance(data.balance);
+  */
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const response = await axios.post('https://mtima.onrender.com/api/v1/accounts/get-balance/',);
+        setBalance(response.data.balance); // Ensure response.data.balance is correct
+      } catch (error) {
+        console.error("Error fetching balance:", error); // Log the error for debugging
+        setError('Failed to get balance');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBalance();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
@@ -24,8 +61,13 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
             </div>
             <div className="mt-4 md:mt-0">
               <div className="bg-[#8928A4] text-white px-6 py-4 rounded-lg">
-                <p className="text-sm">Available Balance</p>
-                <p className="text-3xl font-bold">MK {balance.toLocaleString()}</p>
+                {loading ? (
+                  <p>Loading balance...</p>
+                ) : error ? (
+                  <p>{error}</p>
+                ) : (
+                  <p className="text-3xl font-bold">MK {balance?.toLocaleString()}</p>
+                )}
               </div>
             </div>
           </div>

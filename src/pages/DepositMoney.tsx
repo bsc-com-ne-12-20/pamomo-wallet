@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Mail, DollarSign, ArrowLeft } from 'lucide-react';
+import axios from 'axios';
 
 interface DepositMoneyProps {
   onDeposit: (recipient: string, amount: number) => boolean;
@@ -16,7 +17,7 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onDeposit, username, onLogo
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -26,14 +27,19 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onDeposit, username, onLogo
       return;
     }
 
-    const amountNum = parseFloat(amount);
+    try {
+      const response = await axios.post('https://mtima.onrender.com//api/v1/dpst/', {
+        email: recipient,
+        amount: amount,
+      });
+      const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
       return;
     }
 
     const success = onDeposit(recipient, amountNum);
-    if (success) {
+    if (response.status==201) {
       setSuccess(`Successfully deposited $${amountNum} for ${recipient}`);
       setRecipient('');
       setAmount('');
@@ -43,6 +49,13 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onDeposit, username, onLogo
     } else {
       setError('Transaction failed. Please try again.');
     }
+    } catch (error) {
+      setError('An error occurred. Please try again.');
+      console.error(err);
+      
+    }
+
+    
   };
 
   return (

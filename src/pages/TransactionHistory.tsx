@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import axios from 'axios';
 
 interface Transaction {
   id: number;
@@ -12,13 +13,43 @@ interface Transaction {
 }
 
 interface TransactionHistoryProps {
-  transactions: Transaction[];
   username: string;
   onLogout: () => void;
 }
 
-const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, username, onLogout }) => {
+const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLogout }) => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const [response1, response2, response3] = await Promise.all([
+          axios.get("https://mtima.onrender.com/api/v1/trsf/history"),
+          axios.get("https://mtima.onrender.com/api/v1/dpst/history"),
+          axios.get("https://mtima.onrender.com/api/v1/wtdr/history")
+        ]);
+
+        console.log('Transfer History:', response1.data);
+        console.log('Deposit History:', response2.data);
+        console.log('Withdraw History:', response3.data);
+
+        const allTransactions = [
+          ...response1.data,
+          ...response2.data,
+          ...response3.data,
+        ];
+
+        console.log('All Transactions:', allTransactions);
+
+        setTransactions(allTransactions);
+      } catch (error) {
+        console.error('Error details:', error.response ? error.response.data : error.message);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">

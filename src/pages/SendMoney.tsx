@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Mail, DollarSign, ArrowLeft } from 'lucide-react';
+import { Mail, ArrowLeft } from 'lucide-react';
+import axios from 'axios';
 
 interface SendMoneyProps {
   balance: number;
@@ -17,7 +18,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ balance, onSend, username, onLogo
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -37,17 +38,33 @@ const SendMoney: React.FC<SendMoneyProps> = ({ balance, onSend, username, onLogo
       setError('Insufficient balance');
       return;
     }
+  
 
-    const success = onSend(receiver, amountNum);
-    if (success) {
-      setSuccess(`Successfully sent MK{amountNum} to MK{receiver}`);
-      setReceiver('');
-      setAmount('');
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-    } else {
-      setError('Transaction failed. Please try again.');
+    try {
+      const response = await axios.post("https://mtima.onrender.com/api/v1/trsf/", {
+        sender_email: username,
+        receiver_email: receiver,
+        amount: amountNum
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.status === 201) {
+        onSend(receiver, amountNum);
+          setSuccess(`Successfully sent MK${amountNum.toFixed(2)} to ${receiver}`);
+          setReceiver('');
+          setAmount('');
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 2000);
+      
+      } else {
+        setError('Transaction failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error details:', error.response ? error.response.data : error.message);
     }
   };
 
@@ -98,8 +115,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ balance, onSend, username, onLogo
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  {/* <DollarSign className="h-5 w-5 text-gray-400" /> */}
-                  <h1 className=" text-[#8928A4]"><b>MK</b></h1>
+                  <h1 className="text-[#8928A4]"><b>MK</b></h1>
                 </div>
                 <input
                   type="number"

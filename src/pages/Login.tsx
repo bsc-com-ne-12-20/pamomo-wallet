@@ -4,32 +4,31 @@ import { Hexagon, User, Lock } from 'lucide-react';
 import axios from 'axios';
 
 interface LoginProps {
-  onLogin: (username: string, password: string) => boolean;
+  onLogin: (email: string, password: string) => boolean;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim() === '' || password.trim() === '') {
-      setError('Please enter both username and password');
+    if (email.trim() === '' || password.trim() === '') {
+      setError('Please enter both email and password');
       return;
     }
 
     try {
       const response = await axios.post('https://mtima.onrender.com/api/v1/dj-rest-auth/login', {
-        username,
-        email: '',
-        password
+        email: email, // Use the email variable here
+        password: password, // Use the password variable here
       });
 
       if (response.data.key) {
         localStorage.setItem('authToken', response.data.key);
-        onLogin(username, password);
+        onLogin(email, password);
         console.log(response.data.key);
         navigate('/dashboard');
       }
@@ -59,15 +58,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <User className="h-5 w-5 text-gray-400" />
               </div>
               <input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-[#8928A4] focus:border-[#8928A4] focus:z-10 sm:text-sm"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="relative">

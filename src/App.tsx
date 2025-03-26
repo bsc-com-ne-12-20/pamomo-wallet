@@ -154,36 +154,36 @@ function App() {
         } />
         <Route path="/withdraw" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <RequireVerification>
+            {/*</ProtectedRoute><RequireVerification*>*/}
               <WithdrawMoney 
                 balance={balance} 
                 onWithdraw={handleWithdraw} 
                 username={username}
                 onLogout={handleLogout}
               />
-            </RequireVerification>
+            {/*</RequireVerification>*/}
           </ProtectedRoute>
         } />
         <Route path="/deposit" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <RequireVerification>
+            {/*<RequireVerification>*/}
               <DepositMoney 
                 onDeposit={handleDeposit} 
                 username={username}
                 onLogout={handleLogout}
               />
-            </RequireVerification>
+            {/*</RequireVerification>*/}
           </ProtectedRoute>
         } />
         <Route path="/history" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <RequireVerification>
+            {/*<RequireVerification>*/}
               <TransactionHistory 
                 transactions={transactions} 
                 username={username}
                 onLogout={handleLogout}
               />
-            </RequireVerification>
+            {/*</RequireVerification>*/}
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/login" />} />

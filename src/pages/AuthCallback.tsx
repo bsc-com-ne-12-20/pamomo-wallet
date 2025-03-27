@@ -14,9 +14,10 @@ const AuthCallback = () => {
       fetch("http://localhost:8000/auth/callback/?code=" + authCode)
         .then((res) => res.json())
         .then((data) => {
+          navigate("/dashboard")
           if (data.user_info) {
             localStorage.setItem("user", JSON.stringify(data.user_info));
-            navigate("/dashboard"); // Redirect after successful login
+            ; // Redirect after successful login
           } else {
             console.error("Authentication failed", data);
           }

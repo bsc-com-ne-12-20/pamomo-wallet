@@ -132,13 +132,13 @@ function App() {
           //</ProtectedRoute>
         } />
         <Route path="/dashboard" element={
-          //<ProtectedRoute isAuthenticated={isAuthenticated}>
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
             <Dashboard 
               username={username} 
               balance={balance} 
               onLogout={handleLogout} 
             />
-          //</ProtectedRoute>
+          </ProtectedRoute>
         } />
         <Route path="/send" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>

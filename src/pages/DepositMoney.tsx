@@ -2,21 +2,24 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Mail, DollarSign, ArrowLeft } from 'lucide-react';
+import axios from 'axios';
 
 interface DepositMoneyProps {
-  onDeposit: (recipient: string, amount: number) => boolean;
   username: string;
   onLogout: () => void;
+  setBalance: (balance: number) => void; // Function to update balance
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setTransactions: (transactions: any[]) => void; // Function to update transactions
 }
 
-const DepositMoney: React.FC<DepositMoneyProps> = ({ onDeposit, username, onLogout }) => {
+const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout}) => {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -32,23 +35,34 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onDeposit, username, onLogo
       return;
     }
 
-    const success = onDeposit(recipient, amountNum);
-    if (success) {
-      setSuccess(`Successfully deposited $${amountNum} for ${recipient}`);
-      setRecipient('');
-      setAmount('');
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-    } else {
-      setError('Transaction failed. Please try again.');
+    try {
+      const response = await axios.post('https://mtima.onrender.com/api/v1/dpst/', {
+        email: recipient,
+        amount: amountNum,
+      });
+
+      if (response.data.transaction_id) {
+        setSuccess(`Successfully deposited MK${amountNum} for ${recipient}`);
+        setRecipient('');
+        setAmount('');
+
+
+
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
+      } else {
+        setError('Transaction failed. Please try again.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+      console.error(err);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
-      
       <div className="container mx-auto px-4 py-8">
         <button 
           onClick={() => navigate('/dashboard')} 
@@ -87,8 +101,7 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onDeposit, username, onLogo
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  {/* <DollarSign className="h-5 w-5 text-gray-400" /> */}
-                  <h1 className=" text-[#8928A4]"><b>MK</b></h1>
+                  <DollarSign className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   type="number"
@@ -129,3 +142,4 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onDeposit, username, onLogo
 };
 
 export default DepositMoney;
+

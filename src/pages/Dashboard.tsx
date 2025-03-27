@@ -1,16 +1,56 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link,} from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Card from '../components/Card';
-import { SendIcon, CreditCard, History, DollarSign, PlusCircle } from 'lucide-react';
+import { SendIcon, History, DollarSign, PlusCircle } from 'lucide-react'
 
 interface DashboardProps {
   username: string;
-  balance: number;
   onLogout: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) => {
+const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
+  const [balance, setBalance] = useState<number | null>(null); // State to store balance
+  const [error, setError] = useState<string>(''); // State for error handling
+  const [loading, setLoading] = useState<boolean>(true); // State for loading
+  
+    useEffect(() => {
+      const fetchBalance = async () => {
+        const Username = localStorage.getItem('username');
+  
+        if (!username) {
+          setError('You are not logged in. Please log in again.');
+          setLoading(false);
+          return;
+        }
+  
+        try {
+          const response = await fetch('https://mtima.onrender.com/api/v1/accounts/get-balance/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: username }), // Send email as part of the request body
+          });
+  
+          if (!response.ok) {
+            throw new Error(`Failed to fetch balance: ${response.status}`);
+          }
+  
+          const data = await response.json();
+          setBalance(data.balance);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      fetchBalance();
+    }, []);
+  
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
@@ -25,7 +65,13 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
             <div className="mt-4 md:mt-0">
               <div className="bg-[#8928A4] text-white px-6 py-4 rounded-lg">
                 <p className="text-sm">Available Balance</p>
-                <p className="text-3xl font-bold">MK {balance.toLocaleString()}</p>
+                {loading ? (
+                  <p className="text-3xl font-bold">Loading...</p>
+                ) : error ? (
+                  <p className="text-3xl font-bold text-red-500">{error}</p> // Display error message
+                ) : (
+                  <p className="text-3xl font-bold">MK{balance?.toLocaleString() || '0.00'}</p> // Display balance if available
+                )}
               </div>
             </div>
           </div>
@@ -59,8 +105,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
           <Link to="/withdraw" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="bg-purple-100 p-3 rounded-full mr-4">
-                {/* <DollarSign className="h-6 w-6 text-[#8928A4]" /> */}
-                <h1 className=" text-[#8928A4]"><b>MK</b></h1>
+                <DollarSign className="h-6 w-6 text-[#8928A4]" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Withdraw Money</h3>
@@ -100,7 +145,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
           </div>
         </div>
         
-        {/* <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Stats</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border border-gray-200 rounded-lg p-4">
@@ -116,7 +161,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, balance, onLogout }) =>
               <p className="text-2xl font-bold text-gray-800">18</p>
             </div>
           </div>
-        </div> */}
+        </div>
       </div>
     </div>
   );

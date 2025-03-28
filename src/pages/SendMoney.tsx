@@ -12,10 +12,21 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
   const [balance, setBalance] = useState<number | null>(null);
   const [receiver, setReceiver] = useState('');
   const [amount, setAmount] = useState('');
+  const [transactionFee, setTransactionFee] = useState(0);
+  const [totalDeduction, setTotalDeduction] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAmount(value);
+    const amountNum = parseFloat(value) || 0;
+    const fee = amountNum * 0.03;
+    setTransactionFee(fee);
+    setTotalDeduction(amountNum + fee);
+  };
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -90,6 +101,8 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
         setSuccess(`Successfully sent MK${amount} to ${receiver}.`);
         setReceiver('');
         setAmount('');
+        setTransactionFee(0);
+        setTotalDeduction(0);
         setTimeout(() => {
           navigate('/dashboard');
         }, 2000);
@@ -101,7 +114,6 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
     }
   };
 
-  // Retrieve the username from localStorage
   const username = localStorage.getItem('username') || 'User';
 
   return (
@@ -155,7 +167,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <DollarSign className="h-5 w-5 text-gray-400" />
+                  <h1 className="text-[grey]"><b>MK</b></h1>
                 </div>
                 <input
                   type="number"
@@ -163,13 +175,20 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
                   className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
                   placeholder="0.00"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={handleAmountChange}
                   min="0.01"
                   step="0.01"
                 />
               </div>
             </div>
             
+            {amount && (
+              <div className="mb-4 text-sm text-gray-700">
+                <p>Transaction Fee: <span className="font-bold">MK{transactionFee.toFixed(2)}</span></p>
+                <p>Total Deduction: <span className="font-bold">MK{totalDeduction.toFixed(2)}</span></p>
+              </div>
+            )}
+
             {error && (
               <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
                 {error}

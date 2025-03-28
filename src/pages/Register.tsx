@@ -4,7 +4,7 @@ import { Hexagon, User, Lock, Mail, Phone } from 'lucide-react';
 import axios from 'axios';
 
 interface RegisterProps {
-  onRegister: (name: string, email: string, phone: string, password: string) => boolean;
+  onRegister: (username: string, email: string, phone: string, password: string) => boolean;
 }
 
 const Register: React.FC<RegisterProps> = ({ onRegister }) => {
@@ -25,14 +25,12 @@ const Register: React.FC<RegisterProps> = ({ onRegister }) => {
       return;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address');
       return;
     }
 
-    // Basic phone validation (simple format check)
     const phoneRegex = /^\+?[\d\s-]{10,}$/;
     if (!phoneRegex.test(phone)) {
       setError('Please enter a valid phone number');
@@ -54,8 +52,10 @@ const Register: React.FC<RegisterProps> = ({ onRegister }) => {
 
       if (response.data.key) {
         localStorage.setItem('authToken', response.data.key);
-        onRegister(username, email, phone, password);
-        navigate('/login');
+        localStorage.setItem('username', username);
+        localStorage.setItem('email', email);
+        onRegister(username, email, phone, password); // Call onRegister function
+        navigate('/login'); // Redirect to login
       }
     } catch (err: any) {
       if (err.response?.data) {

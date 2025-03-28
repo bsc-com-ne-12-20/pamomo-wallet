@@ -90,6 +90,16 @@ const App = () => {
     return true;
   };
 
+  const handleRegister = (username, email, phone, password) => {
+    // Handle registration logic (e.g., save user data, set local storage, etc.)
+    // Commented out the logging line
+    // console.log('Registered user:', username, email, phone);
+    localStorage.setItem('username', username);
+    localStorage.setItem('email', email);
+    // You might want to set isAuthenticated to true here
+    return true; // Modify as needed
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <Routes>
@@ -99,7 +109,7 @@ const App = () => {
           <Login onLogin={handleLogin} />
         } />
 
-        <Route path="/register" element={<Register />} />
+        <Route path="/register" element={<Register onRegister={handleRegister} />} />
 
         <Route path="/verify" 
             element={<VerifyIdentity 
@@ -140,7 +150,6 @@ const App = () => {
             <DepositMoney 
             username={username} 
             onLogout={handleLogout} />
-
           </ProtectedRoute>
          } />
 
@@ -161,6 +170,7 @@ const App = () => {
               onLogout={handleLogout} />
           </ProtectedRoute>
         } />
+        
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </div>

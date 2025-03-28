@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Mail, DollarSign, ArrowLeft } from 'lucide-react';
-import axios from 'axios';
 
 interface DepositMoneyProps {
   username: string;
   onLogout: () => void;
-  setBalance: (balance: number) => void; // Function to update balance
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setTransactions: (transactions: any[]) => void; // Function to update transactions
+  setBalance: (balance: number) => void;
+  setTransactions: (transactions: any[]) => void;
 }
 
 const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
@@ -18,20 +16,26 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const location = useLocation();  // To capture the callback URL params
+  const location = useLocation();
 
-  // Handle callback after payment
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const txRef = queryParams.get('tx_ref');
-    
+
     if (txRef) {
-      // Verify the payment status
-      verifyPayment(txRef);
+      const savedEmail = localStorage.getItem('recipientEmail');
+      const savedAmount = localStorage.getItem('depositAmount');
+
+      if (savedEmail && savedAmount) {
+        setRecipient(savedEmail);
+        verifyPayment(txRef, savedEmail);
+      } else {
+        setError('Recipient information missing. Please try again.');
+      }
     }
   }, [location]);
 
-  const verifyPayment = async (txRef: string) => {
+  const verifyPayment = async (txRef: string, email: string) => {
     try {
       const response = await fetch(`https://api.paychangu.com/verify-payment/${txRef}`, {
         method: 'GET',
@@ -44,12 +48,11 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
       const result = await response.json();
 
       if (result.status === 'success' && result.data.status === 'success') {
-        // Payment is successful, now deduct 3% from the amount
         const deductedAmount = parseFloat(result.data.amount) * 0.97;
-
-        // Send email and deducted amount to another endpoint
-        sendPaymentDetails(recipient, deductedAmount);
+        await sendPaymentDetails(email, deductedAmount);
         setSuccess('Payment successful. Amount deducted and sent.');
+        localStorage.removeItem('recipientEmail');
+        localStorage.removeItem('depositAmount');
       } else {
         setError('Transaction verification failed.');
       }
@@ -68,11 +71,10 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
         },
         body: JSON.stringify({
           email,
-          amount: amount.toFixed(2), // Send the amount after deduction
+          amount: amount.toFixed(2),
         }),
       });
 
-      // After the transaction is processed, you can update the balance or perform other actions.
       setSuccess('Payment details processed and amount updated.');
     } catch (err) {
       setError('Failed to send payment details. Please try again.');
@@ -84,18 +86,18 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-  
+
     if (!recipient || !amount) {
       setError('Please fill in all fields');
       return;
     }
-  
+
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
       return;
     }
-  
+
     try {
       const response = await fetch('https://api.paychangu.com/payment', {
         method: 'POST',
@@ -107,15 +109,17 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
         body: JSON.stringify({
           currency: 'MWK',
           amount: amountNum.toString(),
-          callback_url: 'https://pamomo-wallet.netlify.app/verifytrans', // Use your actual callback URL
+          callback_url: 'https://pamomo-wallet.netlify.app/verifytrans',
           return_url: 'https://pamomo-wallet.netlify.app/deposit',
         }),
       });
-  
+
       const result = await response.json();
-  
+
       if (result.status === 'success' && result.data.checkout_url) {
-        window.location.href = result.data.checkout_url; // Redirect to payment page
+        localStorage.setItem('recipientEmail', recipient);
+        localStorage.setItem('depositAmount', amount);
+        window.location.href = result.data.checkout_url;
       } else {
         setError('Transaction initiation failed. Please try again.');
       }
@@ -129,17 +133,17 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
       <div className="container mx-auto px-4 py-8">
-        <button 
-          onClick={() => navigate('/dashboard')} 
+        <button
+          onClick={() => navigate('/dashboard')}
           className="flex items-center text-[#8928A4] mb-6 hover:underline"
         >
           <ArrowLeft size={16} className="mr-1" />
           Back to Dashboard
         </button>
-        
+
         <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Deposit Money</h2>
-          
+
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label htmlFor="recipient" className="block text-sm font-medium text-gray-700 mb-1">
@@ -159,7 +163,7 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
                 />
               </div>
             </div>
-            
+
             <div className="mb-6">
               <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
                 Amount
@@ -180,19 +184,19 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
                 />
               </div>
             </div>
-            
+
             {error && (
               <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
                 {error}
               </div>
             )}
-            
+
             {success && (
               <div className="mb-4 p-2 bg-green-50 text-green-500 rounded-md text-sm">
                 {success}
               </div>
             )}
-            
+
             <button
               type="submit"
               className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"

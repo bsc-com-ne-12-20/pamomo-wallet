@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
-import axios from 'axios';
 
 const VerifyTransaction: React.FC = () => {
   const navigate = useNavigate();
@@ -14,18 +13,21 @@ const VerifyTransaction: React.FC = () => {
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const txRef = queryParams.get('tx_ref');
-    //const email = queryParams.get('email'); // Get the email from URL (if provided)
 
-    if (txRef) {
-      //setCustomerEmail(email); // Set the email for the customer
-      verifyPayment(txRef);
+    const savedEmail = localStorage.getItem('recipientEmail');
+    if (savedEmail) {
+      setCustomerEmail(savedEmail);
+    }
+
+    if (txRef && savedEmail) {
+      verifyPayment(txRef, savedEmail);
     } else {
-      setError('Invalid transaction reference or email missing.');
+      setError('Invalid transaction reference or missing email.');
       setStatus('failed');
     }
   }, [location]);
 
-  const verifyPayment = async (txRef: string) => {
+  const verifyPayment = async (txRef: string, email: string) => {
     try {
       const response = await fetch(`https://api.paychangu.com/verify-payment/${txRef}`, {
         method: 'GET',
@@ -38,20 +40,16 @@ const VerifyTransaction: React.FC = () => {
       const result = await response.json();
 
       if (result.status === 'success' && result.data.status === 'success') {
-        // Payment successful, deduct 3% and calculate new amount
-        console.log("payment successful")
         const deductedAmount = parseFloat(result.data.amount) * 0.97;
         setTransactionAmount(deductedAmount);
         setStatus('success');
 
-        // Simulate a delay before redirecting to send payment details
         setTimeout(() => {
-          sendPaymentDetails(deductedAmount);
-        }, 2000); // Wait 2 seconds before redirecting
+          sendPaymentDetails(deductedAmount, email);
+        }, 2000);
       } else {
         setError('Payment verification failed.');
         setStatus('failed');
-        console.log("payment failed")
       }
     } catch (err) {
       setError('Error verifying payment. Please try again.');
@@ -60,21 +58,45 @@ const VerifyTransaction: React.FC = () => {
     }
   };
 
-  const sendPaymentDetails = async (amount: number) => {
+  const sendPaymentDetails = async (amount: number, email: string) => {
     try {
-      // Example API endpoint for sending the details
-      await fetch('https://mtima.onrender.com/api/v1/dpst', {
+      const dpstRes = await fetch('https://mtima.onrender.com/api/v1/dpst/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: customerEmail, // Use the email obtained from the URL
+          email: email,
           amount: amount.toFixed(2),
         }),
       });
 
-      // Redirect to dashboard after processing
+      if (!dpstRes.ok) {
+        const err = await dpstRes.text();
+        console.error('Deposit failed:', err);
+        throw new Error('Deposit failed');
+      }
+
+      // Optionally, verify updated balance
+      const balanceRes = await fetch('https://mtima.onrender.com/api/v1/accounts/get-balance/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+        }),
+      });
+
+      if (!balanceRes.ok) {
+        console.warn('Could not fetch updated balance');
+      } else {
+        const balanceData = await balanceRes.json();
+        console.log('Updated Balance:', balanceData);
+      }
+
+      localStorage.removeItem('recipientEmail');
+      localStorage.removeItem('depositAmount');
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to send payment details. Please try again.');

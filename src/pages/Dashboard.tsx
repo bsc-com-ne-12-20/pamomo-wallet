@@ -105,7 +105,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
           <Link to="/withdraw" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="bg-purple-100 p-3 rounded-full mr-4">
-                <DollarSign className="h-6 w-6 text-[#8928A4]" />
+                <p className="h-6 w-6 text-[#8928A4]" ><b>MK</b></p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Withdraw Money</h3>

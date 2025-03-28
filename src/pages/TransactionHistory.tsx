@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 
 interface Transaction {
@@ -150,8 +150,10 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                             </div>
                           ) : (
                             <div className={`p-1 rounded-full mr-2 bg-blue-100`}>
-                              <ArrowLeft size={16} className="text-blue-600" />
+                              <ArrowLeft size={16} className="text-green-600" />
+                              <ArrowRight size={16} className="text-red-600" />
                             </div>
+                          
                           )}
                           {transaction.description === 'Deposit Funds' ? 'Received' : transaction.description === 'Withdraw Funds' ? 'Withdrawn' : 'Transferred'}
                         </div>

@@ -12,6 +12,8 @@ interface WithdrawMoneyProps {
 const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout }) => {
   const [balance, setBalance] = useState<number | null>(null);
   const [amount, setAmount] = useState('');
+  const [transactionFee, setTransactionFee] = useState(0);
+  const [totalDeduction, setTotalDeduction] = useState(0);
   const [email, setEmail] = useState(username);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -53,6 +55,18 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout }) => 
     fetchBalance();
   }, []);
 
+  useEffect(() => {
+    const amountNum = parseFloat(amount);
+    if (!isNaN(amountNum) && amountNum > 0) {
+      const fee = amountNum * 0.03;
+      setTransactionFee(fee);
+      setTotalDeduction(amountNum + fee);
+    } else {
+      setTransactionFee(0);
+      setTotalDeduction(0);
+    }
+  }, [amount]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -69,7 +83,7 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout }) => 
       return;
     }
 
-    if (amountNum > (balance || 0)) {
+    if (totalDeduction > (balance || 0)) {
       setError('Insufficient balance');
       return;
     }
@@ -80,27 +94,18 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout }) => 
         amount: amountNum,
       });
 
-      // Check if the response indicates success
       if (response.status === 200 || response.status === 201) {
-        const { amount,} = response.data;
-
-        // Set success message
+        const { amount } = response.data;
         setSuccess(`Successfully Withdrawn MK${amount}`);
-        
-        // Clear input fields and reset email
         setAmount('');
         setEmail(username);
-
-        // Redirect after a delay
         setTimeout(() => {
           navigate('/dashboard');
         }, 2000);
       } else {
-        // Handle unexpected response status
         setError('Transaction failed. Please try again.');
       }
     } catch (err) {
-      // Handle specific error messages from the server
       setError(err.response?.data?.non_field_errors || 'An error occurred. Please try again.');
       console.error(err);
     }
@@ -136,53 +141,40 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout }) => 
               <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
                 Amount
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <KeyRound className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="number"
-                  id="amount"
-                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  min="0.01"
-                  step="0.01"
-                />
-              </div>
+              <input
+                type="number"
+                id="amount"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                min="0.01"
+                step="0.01"
+              />
             </div>
-
-            <div className="mb-6">
+            <div className="mb-4">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <KeyRound className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="email"
-                  id="email"
-                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+              <input
+                type="email"
+                id="email"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             
-            {error && (
-              <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
-                {error}
+            {amount && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-700">Transaction Fee: MK{transactionFee.toFixed(2)}</p>
+                <p className="text-sm text-gray-700 font-bold">Total Deduction: MK{totalDeduction.toFixed(2)}</p>
               </div>
             )}
-            
-            {success && (
-              <div className="mb-4 p-2 bg-green-50 text-green-500 rounded-md text-sm">
-                <pre>{success}</pre>
-              </div>
-            )}
+
+            {error && <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">{error}</div>}
+            {success && <div className="mb-4 p-2 bg-green-50 text-green-500 rounded-md text-sm">{success}</div>}
             
             <button
               type="submit"

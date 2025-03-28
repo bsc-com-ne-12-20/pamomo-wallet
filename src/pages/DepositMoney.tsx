@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Mail, DollarSign, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
@@ -12,47 +12,112 @@ interface DepositMoneyProps {
   setTransactions: (transactions: any[]) => void; // Function to update transactions
 }
 
-const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout}) => {
+const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();  // To capture the callback URL params
+
+  // Handle callback after payment
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const txRef = queryParams.get('tx_ref');
+    
+    if (txRef) {
+      // Verify the payment status
+      verifyPayment(txRef);
+    }
+  }, [location]);
+
+  const verifyPayment = async (txRef: string) => {
+    try {
+      const response = await fetch(`https://api.paychangu.com/verify-payment/${txRef}`, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          Authorization: 'Bearer SEC-TEST-nqbbmKfBLjAN7F4XExoJqpJ0ut1rBV5T',
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.status === 'success' && result.data.status === 'success') {
+        // Payment is successful, now deduct 3% from the amount
+        const deductedAmount = parseFloat(result.data.amount) * 0.97;
+
+        // Send email and deducted amount to another endpoint
+        sendPaymentDetails(recipient, deductedAmount);
+        setSuccess('Payment successful. Amount deducted and sent.');
+      } else {
+        setError('Transaction verification failed.');
+      }
+    } catch (err) {
+      setError('Error verifying payment. Please try again.');
+      console.error(err);
+    }
+  };
+
+  const sendPaymentDetails = async (email: string, amount: number) => {
+    try {
+      await fetch('https://mtima.onrender.com/api/v1/dpst', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          amount: amount.toFixed(2), // Send the amount after deduction
+        }),
+      });
+
+      // After the transaction is processed, you can update the balance or perform other actions.
+      setSuccess('Payment details processed and amount updated.');
+    } catch (err) {
+      setError('Failed to send payment details. Please try again.');
+      console.error(err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-
+  
     if (!recipient || !amount) {
       setError('Please fill in all fields');
       return;
     }
-
+  
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
       return;
     }
-
+  
     try {
-      const response = await axios.post('https://mtima.onrender.com/api/v1/dpst/', {
-        email: recipient,
-        amount: amountNum,
+      const response = await fetch('https://api.paychangu.com/payment', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          Authorization: 'Bearer SEC-TEST-nqbbmKfBLjAN7F4XExoJqpJ0ut1rBV5T',
+        },
+        body: JSON.stringify({
+          currency: 'MWK',
+          amount: amountNum.toString(),
+          callback_url: 'https://pamomo-wallet.netlify.app/verifytrans', // Use your actual callback URL
+          return_url: 'https://pamomo-wallet.netlify.app/deposit',
+        }),
       });
-
-      if (response.data.transaction_id) {
-        setSuccess(`Successfully deposited MK${amountNum} for ${recipient}`);
-        setRecipient('');
-        setAmount('');
-
-
-
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
+  
+      const result = await response.json();
+  
+      if (result.status === 'success' && result.data.checkout_url) {
+        window.location.href = result.data.checkout_url; // Redirect to payment page
       } else {
-        setError('Transaction failed. Please try again.');
+        setError('Transaction initiation failed. Please try again.');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -142,4 +207,3 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout}) => {
 };
 
 export default DepositMoney;
-

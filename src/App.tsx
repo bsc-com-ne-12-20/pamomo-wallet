@@ -9,6 +9,7 @@ import DepositMoney from './pages/DepositMoney';
 import TransactionHistory from './pages/TransactionHistory';
 import VerifyIdentity from './pages/VerifyIdentity';
 import ProtectedRoute from './components/ProtectedRoute';
+import VerifyTransaction from './pages/VerifyTransaction';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('authToken'));
@@ -142,6 +143,15 @@ const App = () => {
 
           </ProtectedRoute>
          } />
+
+
+        <Route path="/verifytrans" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <VerifyTransaction
+              username={username}
+              onLogout={handleLogout} />
+          </ProtectedRoute>
+        } />
 
         <Route path="/history" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>

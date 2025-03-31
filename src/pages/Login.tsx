@@ -106,6 +106,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               Sign up
             </Link>
           </div>
+          <div className="text-center text-sm">
+            <Link to="/forgot-password" className="text-[#8928A4] hover:text-[#7a2391] font-medium">
+              Forgot Password?
+            </Link>
+          </div>
         </form>
       </div>
     </div>

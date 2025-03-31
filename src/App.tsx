@@ -10,6 +10,8 @@ import TransactionHistory from './pages/TransactionHistory';
 import VerifyIdentity from './pages/VerifyIdentity';
 import ProtectedRoute from './components/ProtectedRoute';
 import VerifyTransaction from './pages/VerifyTransaction';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('authToken'));
@@ -172,6 +174,8 @@ const App = () => {
         } />
         
         <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} /> // New route for Forgot Password
+        <Route path="/reset-password" element={<ResetPassword />} /> // New route for Reset Password
       </Routes>
     </div>
   );

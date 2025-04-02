@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link,} from 'react-router-dom';
+import { Link, useNavigate,} from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Card from '../components/Card';
 import { SendIcon, History, DollarSign, PlusCircle } from 'lucide-react'
@@ -13,12 +13,20 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [balance, setBalance] = useState<number | null>(null); // State to store balance
   const [error, setError] = useState<string>(''); // State for error handling
   const [loading, setLoading] = useState<boolean>(true); // State for loading
+  const navigate = useNavigate(); // Initialize navigation
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken'); // Clear auth token
+    localStorage.removeItem('email'); // Clear stored email
+    onLogout(); // Call the parent logout function if needed
+    navigate('/login', { replace: true }); // Redirect to login page
+  };
   
     useEffect(() => {
       const fetchBalance = async () => {
-        const Username = localStorage.getItem('username');
+        const email = localStorage.getItem('email');
   
-        if (!username) {
+        if (!email) {
           setError('You are not logged in. Please log in again.');
           setLoading(false);
           return;
@@ -30,7 +38,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ email: username }), // Send email as part of the request body
+            body: JSON.stringify({ email: email }), // Send email as part of the request body
           });
   
           if (!response.ok) {
@@ -53,7 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar username={username} onLogout={onLogout} />
+      <Navbar username={username} onLogout={handleLogout} />
       
       <div className="container mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">

@@ -26,11 +26,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         password: password, // Use the password variable here
       });
 
-      if (response.data.key) {
+      if (response.data?.key) {
         localStorage.setItem('authToken', response.data.key);
-        onLogin(email, password);
-        console.log(response.data.key);
-        navigate('/dashboard');
+        localStorage.setItem('email', email);
+  
+        const success = await onLogin(email, response.data.key);
+        if (success) {
+          navigate('/dashboard', { replace: true });
+        } else {
+          setError('Login failed. Please try again.');
+        }
+      } else {
+        setError('Login failed. No authentication key received.');
       }
     } catch (err) {
       setError('Invalid credentials. Please try again.');

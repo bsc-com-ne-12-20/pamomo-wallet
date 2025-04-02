@@ -30,9 +30,9 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
 
   useEffect(() => {
     const fetchBalance = async () => {
-      const username = localStorage.getItem('username');
+      const email = localStorage.getItem('email');
 
-      if (!username) {
+      if (!email) {
         setError('You are not logged in. Please log in again.');
         setLoading(false);
         return;
@@ -44,7 +44,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email: username }),
+          body: JSON.stringify({ email: email }),
         });
 
         if (!response.ok) {

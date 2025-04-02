@@ -25,14 +25,20 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      setLoading(true);
-      setError(null);
 
+      const email = localStorage.getItem('email');
+
+      if (!email) {
+        setError('You are not logged in. Please log in again.');
+        setLoading(false);
+        return;
+      }
+  
       try {
         const [transferRes, depositRes, withdrawRes] = await Promise.all([
-          axios.get(`https://mtima.onrender.com/api/v1/trsf/history/?email=${username}`),
-          axios.get(`https://mtima.onrender.com/api/v1/dpst/history?email=${username}`),
-          axios.get(`https://mtima.onrender.com/api/v1/wtdr/history?email=${username}`)
+          axios.get(`https://mtima.onrender.com/api/v1/trsf/history/?email=${email}`),
+          axios.get(`https://mtima.onrender.com/api/v1/dpst/history?email=${email}`),
+          axios.get(`https://mtima.onrender.com/api/v1/wtdr/history?email=${email}`)
         ]);
 
         const transferTransactions = transferRes.data.map((tx: any) => ({

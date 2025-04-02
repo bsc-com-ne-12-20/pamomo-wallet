@@ -41,8 +41,30 @@ const App = () => {
       }
     };
 
+    const fetchUsername = async () => {
+      const email = localStorage.getItem('email');
+      if (!email) return;
+
+      try {
+        const response = await fetch('https://mtima.onrender.com/api/v1/accounts/get-username/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch username');
+
+        const data = await response.json();
+        setUsername(data.username); // Set the username
+        localStorage.setItem('username', data.username); // Store username in local storage
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
     if (isAuthenticated) {
       fetchBalance();
+      fetchUsername();
     }
   }, [isAuthenticated]);
 
@@ -50,7 +72,7 @@ const App = () => {
     setIsAuthenticated(true);
     setUsername(user);
     localStorage.setItem('authToken', token);
-    localStorage.setItem('username', user);
+    localStorage.setItem('email', user);
   };
 
   const handleLogout = () => {
@@ -58,6 +80,7 @@ const App = () => {
     setUsername('');
     setIsVerified(false);
     localStorage.removeItem('authToken');
+    localStorage.removeItem('email');
     localStorage.removeItem('username');
     window.location.href = '/login'; // Redirect to login
   };

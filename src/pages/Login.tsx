@@ -21,7 +21,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }
 
     try {
-      const response = await axios.post('https://pamomo-v2-720249987416.africa-south1.run.app/api/v1/dj-rest-auth/login', {
+      //https://pamomo-v2-720249987416.africa-south1.run.app
+      const response = await axios.post('https://mtima.onrender.com/api/v1/dj-rest-auth/login', {
         email: email, // Use the email variable here
         password: password, // Use the password variable here
       });

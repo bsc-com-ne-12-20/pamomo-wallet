@@ -68,7 +68,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">Welcome back, {username}</h2>
-              <p className="text-gray-600">Pamomo-Dashboard</p>
+              <p className="text-gray-600">Dashboard</p>
             </div>
             <div className="mt-4 md:mt-0">
               <div className="bg-[#8928A4] text-white px-6 py-4 rounded-lg">
@@ -93,7 +93,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Deposit Money</h3>
-                <p className="text-gray-600">Add funds for users</p>
+                <p className="text-gray-600">Add funds</p>
               </div>
             </div>
           </Link>

@@ -152,24 +152,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
             />
           </div>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Stats</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <p className="text-gray-600">Monthly Deposits</p>
-              <p className="text-2xl font-bold text-gray-800">$4,000</p>
-            </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <p className="text-gray-600">Total Transactions</p>
-              <p className="text-2xl font-bold text-gray-800">24</p>
-            </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <p className="text-gray-600">Active Users</p>
-              <p className="text-2xl font-bold text-gray-800">18</p>
-            </div>
-          </div>
-        </div>
+        {/* those other divs were here */}
       </div>
     </div>
   );

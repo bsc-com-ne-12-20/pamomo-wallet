@@ -35,15 +35,15 @@ const EsignetSignInButton: React.FC = () => {
   const oidcConfig: OidcConfig = {
     acr_values:
       "mosip:idp:acr:generated-code mosip:idp:acr:biometrics mosip:idp:acr:static-code",
-    authorizeUri: "http://34.35.41.42:3000/authorize",
+    authorizeUri: "http://localhost:3000/authorize",
     claims_locales: "en",
-    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApx6lc",
+    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0_dtH",
     display: "page",
     max_age: 21,
     response_type: "code",
     nonce: "",
     prompt: "consent",
-    redirect_uri: "https://pamomo-v2-720249987416.africa-south1.run.app/callback",
+    redirect_uri: "http://localhost:8000/callback/",
     scope: "openid profile",
     state: "eree2311",
     ui_locales: "en",

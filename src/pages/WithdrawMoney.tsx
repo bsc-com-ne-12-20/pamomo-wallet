@@ -7,9 +7,10 @@ import axios from 'axios';
 interface WithdrawMoneyProps {
   username: string;
   onLogout: () => void;
+  isVerified: boolean; // Add isVerified prop
 }
 
-const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout }) => {
+const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVerified }) => {
   const [balance, setBalance] = useState<number | null>(null);
   const [amount, setAmount] = useState('');
   const [transactionFee, setTransactionFee] = useState(0);
@@ -30,13 +31,19 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout }) => 
         return;
       }
 
+      // Check if user is verified
+      if (!isVerified) {
+        navigate('/verify'); // Redirect to verification page if not verified
+        return;
+      }
+
       try {
         const response = await fetch('https://mtima.onrender.com/api/v1/accounts/get-balance/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email: email }),
+          body: JSON.stringify({ email }),
         });
 
         if (!response.ok) {
@@ -53,7 +60,7 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout }) => 
     };
 
     fetchBalance();
-  }, []);
+  }, [isVerified, navigate]);
 
   useEffect(() => {
     const amountNum = parseFloat(amount);
@@ -128,7 +135,7 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout }) => 
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Withdraw Money</h2>
           
           {loading ? (
-            <p>Loading balance...</p>
+            <p>MK##,###.##</p>
           ) : (
             <div className="bg-purple-50 p-4 rounded-lg mb-6">
               <p className="text-sm text-gray-600">Available Balance</p>

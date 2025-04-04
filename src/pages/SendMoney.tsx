@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Mail, DollarSign, ArrowLeft } from 'lucide-react';
+import { Mail, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 
 interface SendMoneyProps {
   onLogout: () => void;
+  isVerified: boolean; // Add isVerified prop
 }
 
-const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
+const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
   const [balance, setBalance] = useState<number | null>(null);
   const [receiver, setReceiver] = useState('');
   const [amount, setAmount] = useState('');
@@ -38,13 +39,19 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
         return;
       }
 
+      // Check if user is verified
+      if (!isVerified) {
+        navigate('/verify'); // Redirect to verification page if not verified
+        return;
+      }
+
       try {
         const response = await fetch('https://mtima.onrender.com/api/v1/accounts/get-balance/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email: email }),
+          body: JSON.stringify({ email }),
         });
 
         if (!response.ok) {
@@ -61,7 +68,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
     };
 
     fetchBalance();
-  }, []);
+  }, [isVerified, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +92,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
     }
 
     try {
-      const senderEmail = localStorage.getItem('username');
+      const senderEmail = localStorage.getItem('email');
       const response = await axios.post("https://mtima.onrender.com/api/v1/trsf/", {
         sender_email: senderEmail,
         receiver_email: receiver,
@@ -133,7 +140,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout }) => {
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Send Money</h2>
           
           {loading ? (
-            <p>Loading balance...</p>
+            <p>MK##,###.##</p>
           ) : (
             <div className="bg-purple-50 p-4 rounded-lg mb-6">
               <p className="text-sm text-gray-600">Available Balance</p>

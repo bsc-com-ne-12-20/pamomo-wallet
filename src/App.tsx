@@ -55,16 +55,37 @@ const App = () => {
         if (!response.ok) throw new Error('Failed to fetch username');
 
         const data = await response.json();
-        setUsername(data.username); // Set the username
-        localStorage.setItem('username', data.username); // Store username in local storage
+        setUsername(data.username);
+        localStorage.setItem('username', data.username);
       } catch (error) {
         console.error(error);
+      }
+    };
+
+    const checkVerification = async (email: string) => {
+      try {
+        const response = await fetch('https://mtima.onrender.com/callback/check-verification/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+
+        if (!response.ok) throw new Error('Failed to check verification status');
+
+        const data = await response.json();
+        setIsVerified(data.is_verified);
+      } catch (error) {
+        console.error('Verification check failed:', error);
       }
     };
 
     if (isAuthenticated) {
       fetchBalance();
       fetchUsername();
+      const email = localStorage.getItem('email');
+      if (email) {
+        checkVerification(email);
+      }
     }
   }, [isAuthenticated]);
 
@@ -116,12 +137,8 @@ const App = () => {
   };
 
   const handleRegister = (username, email, phone, password) => {
-    // Handle registration logic (e.g., save user data, set local storage, etc.)
-    // Commented out the logging line
-    // console.log('Registered user:', username, email, phone);
     localStorage.setItem('username', username);
     localStorage.setItem('email', email);
-    // You might want to set isAuthenticated to true here
     return true; // Modify as needed
   };
 
@@ -145,30 +162,33 @@ const App = () => {
         <Route path="/dashboard" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <Dashboard 
-            username={username}
-             balance={balance} 
-             onLogout={handleLogout} />
+            username={username} 
+            balance={balance} 
+            onLogout={handleLogout} />
           </ProtectedRoute>
          } />
 
         <Route path="/send" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <SendMoney 
-            username={username} 
-            balance={balance} 
-            onSend={handleSendMoney} 
-            onLogout={handleLogout} />
+              username={username} 
+              balance={balance} 
+              isVerified={isVerified} // Pass isVerified
+              onSend={handleSendMoney} 
+              onLogout={handleLogout} />
           </ProtectedRoute>
-          } />
+        } />
 
         <Route path="/withdraw" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <WithdrawMoney 
-            username={username} balance={balance} 
-            onWithdraw={handleWithdraw} 
-            onLogout={handleLogout} />
+              username={username} 
+              balance={balance} 
+              isVerified={isVerified} // Pass isVerified
+              onWithdraw={handleWithdraw} 
+              onLogout={handleLogout} />
           </ProtectedRoute>
-         } />
+        } />
 
         <Route path="/deposit" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
@@ -177,7 +197,6 @@ const App = () => {
             onLogout={handleLogout} />
           </ProtectedRoute>
          } />
-
 
         <Route path="/verifytrans" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
@@ -197,8 +216,8 @@ const App = () => {
         } />
         
         <Route path="*" element={<Navigate to="/login" />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} /> // New route for Forgot Password
-        <Route path="/reset-password" element={<ResetPassword />} /> // New route for Reset Password
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </div>
   );

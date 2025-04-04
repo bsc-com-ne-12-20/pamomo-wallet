@@ -89,6 +89,45 @@ const App = () => {
     }
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+
+    const handleActivity = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        handleLogout();
+      }, 0.5 * 60 * 1000); // 30 seconds
+    };
+
+    const handleLogout = () => {
+      setIsAuthenticated(false);
+      setUsername('');
+      setIsVerified(false);
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('email');
+      localStorage.removeItem('username');
+      window.location.href = '/login'; // Redirect to login
+    };
+
+    // Add event listeners for user activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keypress', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+
+    // Initialize the timeout
+    handleActivity();
+
+    return () => {
+      // Cleanup event listeners and timeout on unmount
+      clearTimeout(timeout);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keypress', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+    };
+  }, []);
+
   const handleLogin = (user: string, token: string) => {
     setIsAuthenticated(true);
     setUsername(user);

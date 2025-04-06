@@ -37,7 +37,7 @@ const EsignetSignInButton: React.FC = () => {
       "mosip:idp:acr:generated-code mosip:idp:acr:biometrics mosip:idp:acr:static-code",
     authorizeUri: "http://localhost:3000/authorize",
     claims_locales: "en",
-    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0_dtH",
+    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqHRcZ",
     display: "page",
     max_age: 21,
     response_type: "code",

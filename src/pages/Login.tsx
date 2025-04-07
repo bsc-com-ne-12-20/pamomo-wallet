@@ -26,6 +26,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(''); // Clear previous errors
 
     try {
+      //use this : https://mtima.onrender.com/api/v1/accounts/login/ for login with 2FA
       const response = await axios.post('https://mtima.onrender.com/api/v1/dj-rest-auth/login/',
        {
         email: email,

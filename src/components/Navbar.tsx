@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, LogOut } from 'lucide-react';
+import { Wallet, LogOut, Menu, User, Settings, Shield } from 'lucide-react';
 
 interface NavbarProps {
   username: string;
@@ -8,6 +8,12 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
   return (
     <nav className="bg-[#8928A4] text-white p-4">
       <div className="container mx-auto flex justify-between items-center">
@@ -15,17 +21,56 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
           <Wallet size={24} />
           <span className="text-xl font-bold">Pamomo</span>
         </Link>
-        <div className="flex items-center space-x-4">
-        <Link to={`/profile/`} className="hover:underline">
-          <span>Welcome, {username}</span>
-          </Link>
-          <button 
-            onClick={onLogout} 
-            className="flex items-center space-x-1 bg-white text-[#8928A4] px-3 py-1 rounded-md hover:bg-gray-100 transition"
+        <div className="relative">
+          <button
+            onClick={toggleMenu}
+            className="flex items-center space-x-2 bg-white text-[#8928A4] px-3 py-1 rounded-md hover:bg-gray-100 transition"
           >
-            <LogOut size={16} />
-            <span>Logout</span>
+            <Menu size={20} />
+            <span>Menu</span>
           </button>
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white text-[#8928A4] rounded-lg shadow-lg">
+              <ul className="py-2">
+                <li>
+                  <Link
+                    to="/profile"
+                    className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 transition"
+                  >
+                    <User size={16} />
+                    <span>Profile</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/settings"
+                    className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 transition"
+                  >
+                    <Settings size={16} />
+                    <span>Settings</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/security"
+                    className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 transition"
+                  >
+                    <Shield size={16} />
+                    <span>Security & Privacy</span>
+                  </Link>
+                </li>
+                <li>
+                  <button
+                    onClick={onLogout}
+                    className="flex items-center space-x-2 w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                  >
+                    <LogOut size={16} />
+                    <span>Logout</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </nav>

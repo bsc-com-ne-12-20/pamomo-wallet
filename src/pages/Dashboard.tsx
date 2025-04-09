@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Card from '../components/Card';
 import { SendIcon, History, PlusCircle } from 'lucide-react';
+import verifyIcon from '../components/images/verify.png';
 
 interface DashboardProps {
   username: string;
@@ -61,7 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
     const checkVerification = async (email: string) => {
       try {
-        const response = await fetch('https://mtima.onrender.com/callback/check-verification/', {
+        const response = await fetch('http://localhost:8000/callback/check-verification/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -111,7 +112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
             <div>
               <h2 className="text-2xl font-bold text-gray-800">
                 Welcome back, {username}
-                {isVerified && <img src="src/components/images/verify.png" className="inline ml-2 h-8 w-8" alt="Verified" />}
+                {isVerified && <img src={verifyIcon} className="inline ml-2 h-8 w-8" alt="Verified" />}
               </h2>
               <p className="text-gray-600">Pamomo-Dashboard</p>
             </div>

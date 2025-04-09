@@ -12,6 +12,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import VerifyTransaction from './pages/VerifyTransaction';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ProfilePage from './pages/Profilepage';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('authToken'));
@@ -249,6 +250,15 @@ const App = () => {
         <Route path="/history" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <TransactionHistory
+             username={username}
+              transactions={transactions} 
+              onLogout={handleLogout} />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/profile" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <ProfilePage
              username={username}
               transactions={transactions} 
               onLogout={handleLogout} />

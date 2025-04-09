@@ -73,26 +73,31 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
       setLoading(false);
     }
   };
-
   const fetchTransactions = async () => {
     const email = localStorage.getItem('email');
-
+  
     if (!email) {
       return;
     }
-
+  
     try {
       const response = await fetch(`https://mtima.onrender.com/api/v1/trsf/history/?email=${email}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch transactions: ${response.status}`);
       }
-
+  
       const data = await response.json();
-
+  
       // Filter transactions where the logged-in user is the sender
       const filteredTransactions = data.filter((transaction: Transaction) => transaction.sender === email);
-
-      setTransactions(filteredTransactions.slice(0, 5)); // Get the most recent 5 transactions
+  
+      // Sort transactions by time_stamp in descending order (most recent first)
+      const sortedTransactions = filteredTransactions.sort(
+        (a, b) => new Date(b.time_stamp).getTime() - new Date(a.time_stamp).getTime()
+      );
+  
+      // Get the most recent 5 transactions
+      setTransactions(sortedTransactions.slice(0, 5));
     } catch (err) {
       console.error(err);
       setTransactions([]);

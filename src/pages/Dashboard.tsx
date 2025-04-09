@@ -43,61 +43,59 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     navigate('/login', { replace: true });
   };
 
+  const fetchBalance = async () => {
+    const email = localStorage.getItem('email');
+
+    if (!email) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('https://mtima.onrender.com/api/v1/accounts/get-balance/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch balance: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setBalance(data.balance);
+    } catch (err) {
+      console.error(err);
+      setBalance(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    const email = localStorage.getItem('email');
+
+    if (!email) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://mtima.onrender.com/api/v1/trsf/history/?email=${email}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch transactions: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setTransactions(data.slice(0, 5)); // Get the most recent 5 transactions
+    } catch (err) {
+      console.error(err);
+      setTransactions([]);
+    }
+  };
+
   useEffect(() => {
-    const fetchBalance = async () => {
-      const email = localStorage.getItem('email');
-
-      if (!email) {
-        setError('You are not logged in. Please log in again.');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch('https://mtima.onrender.com/api/v1/accounts/get-balance/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch balance: ${response.status}`);
-        }
-
-        const data = await response.json();
-        setBalance(data.balance);
-      } catch (err) {
-        console.error(err);
-        setBalance(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchTransactions = async () => {
-      const email = localStorage.getItem('email');
-
-      if (!email) {
-        setError('You are not logged in. Please log in again.');
-        return;
-      }
-
-      try {
-        const response = await fetch(`https://mtima.onrender.com/api/v1/trsf/history/?email=${email}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch transactions: ${response.status}`);
-        }
-
-        const data = await response.json();
-        setTransactions(data.slice(0, 5)); // Get the most recent 5 transactions
-      } catch (err) {
-        console.error(err);
-        setTransactions([]);
-      }
-    };
-
     const checkVerification = async (email: string) => {
       try {
         const response = await fetch('https://mtima.onrender.com/callback/check-verification/', {
@@ -192,7 +190,8 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    navigate('/dashboard'); // Redirect to dashboard after closing the pop-up
+    fetchBalance(); // Refresh the balance
+    fetchTransactions(); // Refresh the transactions
   };
 
   return (

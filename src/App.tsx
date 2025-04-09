@@ -91,13 +91,14 @@ const App = () => {
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
-
+    
     const handleActivity = () => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         handleLogout();
-      }, 0.5 * 60 * 1000); // 30 seconds
+      }, 20 * 60 * 1000); // 20 minutes
     };
+    
 
     const handleLogout = () => {
       setIsAuthenticated(false);

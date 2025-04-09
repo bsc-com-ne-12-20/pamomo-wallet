@@ -88,7 +88,11 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
       }
 
       const data = await response.json();
-      setTransactions(data.slice(0, 5)); // Get the most recent 5 transactions
+
+      // Filter transactions where the logged-in user is the sender
+      const filteredTransactions = data.filter((transaction: Transaction) => transaction.sender === email);
+
+      setTransactions(filteredTransactions.slice(0, 5)); // Get the most recent 5 transactions
     } catch (err) {
       console.error(err);
       setTransactions([]);

@@ -69,7 +69,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               Pamomo
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
-              Digital Wallet Management
+              Secure Digital Wallet
             </p>
           </div>
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

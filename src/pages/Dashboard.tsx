@@ -1,21 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import Card from '../components/Card';
 import { SendIcon, History, PlusCircle } from 'lucide-react';
 import verifyIcon from '../components/images/verify.png';
+import axios from 'axios';
 
 interface DashboardProps {
   username: string;
   onLogout: () => void;
 }
 
+interface Transaction {
+  trans_id: string;
+  sender: string;
+  receiver: string;
+  amount: string;
+  transaction_fee: string;
+  time_stamp: string;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [balance, setBalance] = useState<number | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [showNotVerifiedMessage, setShowNotVerifiedMessage] = useState<boolean>(false);
   const [isVerified, setIsVerified] = useState<boolean>(false);
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [selectedReceiver, setSelectedReceiver] = useState<string>('');
+  const [sendAmount, setSendAmount] = useState<string>('');
+  const [transactionFee, setTransactionFee] = useState<number>(0);
+  const [totalDeduction, setTotalDeduction] = useState<number>(0);
+  const [isSending, setIsSending] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -53,10 +69,31 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
         setBalance(data.balance);
       } catch (err) {
         console.error(err);
-        // Set balance to null to display the placeholder
         setBalance(null);
       } finally {
         setLoading(false);
+      }
+    };
+
+    const fetchTransactions = async () => {
+      const email = localStorage.getItem('email');
+
+      if (!email) {
+        setError('You are not logged in. Please log in again.');
+        return;
+      }
+
+      try {
+        const response = await fetch(`https://mtima.onrender.com/api/v1/trsf/history/?email=${email}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch transactions: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setTransactions(data.slice(0, 5)); // Get the most recent 5 transactions
+      } catch (err) {
+        console.error(err);
+        setTransactions([]);
       }
     };
 
@@ -93,7 +130,64 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     }
 
     fetchBalance();
+    fetchTransactions();
   }, []);
+
+  const handleSendAgain = (receiverEmail: string) => {
+    setSelectedReceiver(receiverEmail);
+    setSendAmount('');
+    setTransactionFee(0);
+    setTotalDeduction(0);
+    setShowModal(true);
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSendAmount(value);
+    const amountNum = parseFloat(value) || 0;
+    const fee = amountNum * 0.03; // 3% transaction fee
+    setTransactionFee(fee);
+    setTotalDeduction(amountNum + fee);
+  };
+
+  const handleSend = async () => {
+    if (!sendAmount || parseFloat(sendAmount) <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+
+    if (parseFloat(sendAmount) > (balance || 0)) {
+      alert('Insufficient balance.');
+      return;
+    }
+
+    setIsSending(true);
+
+    try {
+      const senderEmail = localStorage.getItem('email');
+      const response = await axios.post("https://mtima.onrender.com/api/v1/trsf/", {
+        sender_email: senderEmail,
+        receiver_email: selectedReceiver,
+        amount: parseFloat(sendAmount),
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.status === 201) {
+        alert(`Successfully sent MK${sendAmount} to ${selectedReceiver}`);
+        setShowModal(false);
+      } else {
+        alert('Transaction failed. Please try again.');
+      }
+    } catch (error) {
+      alert('An error occurred while processing your transaction.');
+      console.error('Transaction error:', error);
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -181,24 +275,89 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
           </Link>
         </div>
 
+        {/* Recent Transactions */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Your Cards</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card 
-              cardNumber="**** **** **** 1234" 
-              cardHolder={username} 
-              expiryDate="12/28" 
-              type="Platinum"
-            />
-            <Card 
-              cardNumber="**** **** **** 5678" 
-              cardHolder={username} 
-              expiryDate="09/27" 
-              type="Gold"
-            />
-          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Transactions</h2>
+          {transactions.length > 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <ul className="divide-y divide-gray-200">
+                {transactions.map((transaction) => (
+                  <li key={transaction.trans_id} className="py-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          Sent to: <span className="font-bold">{transaction.receiver}</span>
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(transaction.time_stamp).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <p className="text-sm font-bold text-red-500">
+                          -MK{parseFloat(transaction.amount).toLocaleString()}
+                        </p>
+                        <button
+                          onClick={() => handleSendAgain(transaction.receiver)}
+                          className="bg-[#8928A4] text-white px-4 py-2 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                        >
+                          Send Again
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-gray-500">No recent transactions found.</p>
+          )}
         </div>
       </div>
+
+      {/* Send Again Modal */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Send Money</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Sending to: <span className="font-bold">{selectedReceiver}</span>
+            </p>
+            <div className="mb-4">
+              <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+                Amount
+              </label>
+              <input
+                type="number"
+                id="amount"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm p-2"
+                placeholder="Enter amount"
+                value={sendAmount}
+                onChange={handleAmountChange}
+              />
+            </div>
+            {sendAmount && (
+              <div className="mb-4 text-sm text-gray-700">
+                <p>Transaction Fee: <span className="font-bold">MK{transactionFee.toFixed(2)}</span></p>
+                <p>Total Deduction: <span className="font-bold">MK{totalDeduction.toFixed(2)}</span></p>
+              </div>
+            )}
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setShowModal(false)}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSend}
+                className="bg-[#8928A4] text-white px-4 py-2 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+              >
+                {isSending ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

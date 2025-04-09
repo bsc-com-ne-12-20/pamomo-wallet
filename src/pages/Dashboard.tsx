@@ -32,6 +32,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [transactionFee, setTransactionFee] = useState<number>(0);
   const [totalDeduction, setTotalDeduction] = useState<number>(0);
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -176,8 +177,8 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
       });
 
       if (response.status === 201) {
-        alert(`Successfully sent MK${sendAmount} to ${selectedReceiver}`);
         setShowModal(false);
+        setShowSuccessPopup(true); // Show success pop-up
       } else {
         alert('Transaction failed. Please try again.');
       }
@@ -187,6 +188,11 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handlePopupClose = () => {
+    setShowSuccessPopup(false);
+    navigate('/dashboard'); // Redirect to dashboard after closing the pop-up
   };
 
   return (
@@ -355,6 +361,24 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                 {isSending ? 'Sending...' : 'Send'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Pop-Up */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Transaction Successful</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              MK<span className="font-bold">{sendAmount}</span> has been sent successfully to <span className="font-bold">{selectedReceiver}</span>.
+            </p>
+            <button
+              onClick={handlePopupClose}
+              className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

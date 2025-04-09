@@ -139,7 +139,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Deposit Money</h3>
-                <p className="text-gray-600">Add funds for users</p>
+                <p className="text-gray-600">Deposit or Pay</p>
               </div>
             </div>
           </Link>

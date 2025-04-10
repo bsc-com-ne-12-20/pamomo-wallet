@@ -13,6 +13,7 @@ import VerifyTransaction from './pages/VerifyTransaction';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ProfilePage from './pages/Profilepage';
+import Security from './pages/Security'; // Import Security page
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('authToken'));
@@ -92,14 +93,13 @@ const App = () => {
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
-    
+
     const handleActivity = () => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         handleLogout();
       }, 20 * 60 * 1000); // 20 minutes
     };
-    
 
     const handleLogout = () => {
       setIsAuthenticated(false);
@@ -154,30 +154,36 @@ const App = () => {
   const handleSendMoney = (receiver: string, amount: number) => {
     if (!isVerified || amount > balance) return false;
     setBalance(prev => prev - amount);
-    setTransactions(prev => [...prev, {
-      id: Date.now(),
-      type: 'debit',
-      amount,
-      date: new Date().toLocaleDateString(),
-      description: `Sent to ${receiver}`
-    }]);
+    setTransactions(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        type: 'debit',
+        amount,
+        date: new Date().toLocaleDateString(),
+        description: `Sent to ${receiver}`,
+      },
+    ]);
     return true;
   };
 
   const handleWithdraw = (amount: number, code: string) => {
     if (!isVerified || amount > balance || code !== '1234') return false;
     setBalance(prev => prev - amount);
-    setTransactions(prev => [...prev, {
-      id: Date.now(),
-      type: 'debit',
-      amount,
-      date: new Date().toLocaleDateString(),
-      description: 'Withdrawal'
-    }]);
+    setTransactions(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        type: 'debit',
+        amount,
+        date: new Date().toLocaleDateString(),
+        description: 'Withdrawal',
+      },
+    ]);
     return true;
   };
 
-  const handleRegister = (username, email, phone, password) => {
+  const handleRegister = (username: string, email: string, phone: string, password: string) => {
     localStorage.setItem('username', username);
     localStorage.setItem('email', email);
     return true; // Modify as needed
@@ -186,85 +192,102 @@ const App = () => {
   return (
     <div className="min-h-screen bg-white">
       <Routes>
-        <Route path="/login" element={
-          isAuthenticated ? 
-          <Navigate to="/dashboard" /> : 
-          <Login onLogin={handleLogin} />
-        } />
+        <Route
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />}
+        />
 
         <Route path="/register" element={<Register onRegister={handleRegister} />} />
 
-        <Route path="/verify" 
-            element={<VerifyIdentity 
-            username={username}
-             onLogout={handleLogout} 
-             onVerify={handleVerify} />} />
+        <Route
+          path="/verify"
+          element={<VerifyIdentity username={username} onLogout={handleLogout} onVerify={handleVerify} />}
+        />
 
-        <Route path="/dashboard" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <Dashboard 
-            username={username} 
-            balance={balance} 
-            onLogout={handleLogout} />
-          </ProtectedRoute>
-         } />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <Dashboard username={username} balance={balance} onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/send" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <SendMoney 
-              username={username} 
-              balance={balance} 
-              isVerified={isVerified} // Pass isVerified
-              onSend={handleSendMoney} 
-              onLogout={handleLogout} />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/send"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <SendMoney
+                username={username}
+                balance={balance}
+                isVerified={isVerified} // Pass isVerified
+                onSend={handleSendMoney}
+                onLogout={handleLogout}
+              />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/withdraw" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <WithdrawMoney 
-              username={username} 
-              balance={balance} 
-              isVerified={isVerified} // Pass isVerified
-              onWithdraw={handleWithdraw} 
-              onLogout={handleLogout} />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/withdraw"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <WithdrawMoney
+                username={username}
+                balance={balance}
+                isVerified={isVerified} // Pass isVerified
+                onWithdraw={handleWithdraw}
+                onLogout={handleLogout}
+              />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/deposit" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <DepositMoney 
-            username={username} 
-            onLogout={handleLogout} />
-          </ProtectedRoute>
-         } />
+        <Route
+          path="/deposit"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <DepositMoney username={username} onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/verifytrans" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <VerifyTransaction
-              username={username}
-              onLogout={handleLogout} />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/verifytrans"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <VerifyTransaction username={username} onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/history" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <TransactionHistory
-             username={username}
-              transactions={transactions} 
-              onLogout={handleLogout} />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <TransactionHistory username={username} transactions={transactions} onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/profile" element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <ProfilePage
-             username={username}
-              transactions={transactions} 
-              onLogout={handleLogout} />
-          </ProtectedRoute>
-        } />
-        
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <ProfilePage username={username} transactions={transactions} onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/security"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <Security />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/login" />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />

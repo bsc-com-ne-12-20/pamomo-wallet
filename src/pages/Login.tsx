@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Hexagon, User, Lock } from 'lucide-react';
 import axios from 'axios';
-import Loader from '../components/Loader'; // Import the Loader component
+import Loader from '../components/loader'; // Import the Loader component
 
 interface LoginProps {
   onLogin: (email: string, password: string) => boolean;
@@ -26,34 +26,66 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(''); // Clear previous errors
 
     try {
-      //use this : https://mtima.onrender.com/api/v1/accounts/login/ for login with 2FA
-      const response = await axios.post('https://mtima.onrender.com/api/v1/dj-rest-auth/login/',
-       {
-        email: email,
-        password: password,
-      });
 
-      if (response.data?.key) {
-        localStorage.setItem('authToken', response.data.key);
+      // Use this endpoint for login https://mtima.onrender.com/api/v1/accounts/login/ with 2FA 
+      const response = await axios.post('https://mtima.onrender.com/api/v1/dj-rest-auth/login/', {
+          email,
+          password,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    
+      console.log("Status Code:", response.status);
+      console.log("Response Data:", response.data);
+    
+      const data = response.data;
+    
+      if (data?.['2fa_required']) {
+        const pre2faUserId = data['pre_2fa_user_id'];
+        if (pre2faUserId) {
+          localStorage.setItem('email', email);
+          localStorage.setItem('pre_2fa_user_id', pre2faUserId);
+    
+          navigate('/otp-verification', {
+            state: {
+              email,
+              pre_2fa_user_id: pre2faUserId,
+            },
+          });
+        } else {
+          setError('Pre-2FA User ID not found in the response.');
+        }
+      } else if (data?.key || data?.token) {
+        const token = data.key || data.token;
+        localStorage.setItem('authToken', token);
         localStorage.setItem('email', email);
-
-        const success = await onLogin(email, response.data.key);
+    
+        const success = await onLogin(email, token);
         if (success) {
           navigate('/dashboard', { replace: true });
         } else {
-          navigate('/dashboard', { replace: true });
-          //setError('Login failed. Please try again.');
+          setError('Login failed. Please try again.');
         }
       } else {
         setError('Login failed. No authentication key received.');
-        console.error('No authentication key received:', response.data);
+        console.error('No authentication key received:', data);
       }
-    } catch (err) {
-      setError('Invalid credentials. Please try again.');
+    } catch (error: any) {
+      console.log("Error Status Code:", error.response?.status || 'No status');
+      console.log("Error Response:", error.response?.data);
+      const detail =
+        error.response?.data?.non_field_errors?.[0] ||
+        error.response?.data?.detail ||
+        'Invalid credentials. Please try again.';
+      setError(detail);
     } finally {
       setIsLoading(false); // Hide loader
     }
-  };
+  } 
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

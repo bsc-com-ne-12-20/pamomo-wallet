@@ -14,6 +14,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ProfilePage from './pages/Profilepage';
 import Security from './pages/Security'; // Import Security page
+import OtpVerification from './pages/OtpVerification';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('authToken'));
@@ -21,6 +22,7 @@ const App = () => {
   const [username, setUsername] = useState<string>(localStorage.getItem('username') || '');
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [isOtpVerified, setIsOtpVerified] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -92,6 +94,13 @@ const App = () => {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    const otpVerified = localStorage.getItem('otpVerified');
+    if (otpVerified === 'true') {
+      setIsOtpVerified(true);
+    }
+  }, []);
+
+  useEffect(() => {
     let timeout: NodeJS.Timeout;
 
     const handleActivity = () => {
@@ -149,6 +158,12 @@ const App = () => {
 
   const handleVerify = () => {
     setIsVerified(true);
+  };
+
+  // Handle OTP Success: update state and localStorage
+  const handleOtpSuccess = () => {
+    setIsOtpVerified(true);
+    localStorage.setItem('otpVerified', 'true');
   };
 
   const handleSendMoney = (receiver: string, amount: number) => {
@@ -287,6 +302,12 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        
+        <Route path="/otp-verification"
+             element={<OtpVerification 
+             handleOtpSuccess={handleOtpSuccess} 
+         />} 
+         />
 
         <Route path="*" element={<Navigate to="/login" />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

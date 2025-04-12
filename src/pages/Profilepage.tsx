@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft, UserRound, Mail, Phone, Calendar, User, Users } from 'lucide-react';
-import QRCode from 'react-qr-code'; // Correct import for QRCode component
+import QRCode from 'react-qr-code';
 
 interface UserProfile {
   name: string;
@@ -23,6 +23,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
   const [userData, setUserData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; needsVerification?: boolean; isNotFound?: boolean }>({ message: '' });
+  const qrRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -97,6 +98,56 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
     } else {
       return <UserRound size={18} className="text-[#8928A4] mr-2" />;
     }
+  };
+
+  const downloadQRCode = () => {
+    if (!userData?.email) return;
+    
+    // Get the SVG element
+    const svg = document.getElementById('qrCode');
+    if (!svg) return;
+    
+    // Create a canvas with proper dimensions
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    
+    // Set canvas dimensions (with higher resolution for better quality)
+    canvas.width = 440;  // 2x size for better quality
+    canvas.height = 440;
+    
+    // Convert SVG to a data URL
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const DOMURL = window.URL || window.webkitURL || window;
+    const url = DOMURL.createObjectURL(svgBlob);
+    
+    // Create an Image object
+    const img = new Image();
+    img.onload = () => {
+      // Fill with white background first
+      context.fillStyle = 'white';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw the image
+      context.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      // Convert canvas to PNG data URL
+      const pngUrl = canvas.toDataURL('image/png');
+      
+      // Create download link
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `qrcode-${userData.name || 'user'}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+      // Clean up
+      DOMURL.revokeObjectURL(url);
+    };
+    
+    img.src = url;
   };
 
   return (
@@ -239,39 +290,41 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
 
                       {/* QR Code Section */}
                       <div className="flex flex-col items-center mt-8">
-  <h4 className="text-lg font-medium text-gray-700 mb-4">Your QR Code</h4>
-  <div className="relative">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="0"
-      height="0"
-      className="absolute"
-    >
-      <defs>
-        <linearGradient id="gradientColor" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" style={{ stopColor: '#8928A4', stopOpacity: 1 }} />
-          <stop offset="50%" style={{ stopColor: '#6a1f7a', stopOpacity: 1 }} />
-          <stop offset="100%" style={{ stopColor: '#4a148c', stopOpacity: 1 }} />
-        </linearGradient>
-      </defs>
-    </svg>
-    <div className="relative">
-      {/* Faint Logo */}
-      <img
-        src="https://i.ibb.co/Pvz4mskG/hexagon.png"
-        alt="Logo"
-        className="absolute inset-0 w-full h-full object-contain opacity-10" // Faint logo with reduced opacity
-      />
-      {/* QR Code */}
-      <QRCode
-        value={userData.email}
-        size={220} // Enlarged size for better visibility
-        bgColor="transparent" // Transparent background to blend with the logo
-        fgColor="url(#gradientColor)" // Apply enhanced gradient color
-      />
-    </div>
-  </div>
-</div>
+                        <h4 className="text-lg font-medium text-gray-700 mb-4">Your QR Code</h4>
+                        <div className="bg-white p-4 rounded-lg shadow-sm">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="0"
+                            height="0"
+                            className="absolute"
+                          >
+                            <defs>
+                              <linearGradient id="gradientColor" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style={{ stopColor: '#8928A4', stopOpacity: 1 }} />
+                                <stop offset="50%" style={{ stopColor: '#6a1f7a', stopOpacity: 1 }} />
+                                <stop offset="100%" style={{ stopColor: '#4a148c', stopOpacity: 1 }} />
+                              </linearGradient>
+                            </defs>
+                          </svg>
+                          <div className="relative">
+                            <QRCode
+                              id="qrCode"
+                              value={userData.email}
+                              size={220}
+                              bgColor="#FFFFFF"
+                              fgColor="#8928A4"
+                              level="H"
+                            />
+                          </div>
+                        </div>
+                        {/* Download Button */}
+                        <button
+                          onClick={downloadQRCode}
+                          className="mt-4 px-4 py-2 bg-[#8928A4] text-white rounded-md shadow-md hover:bg-[#6a1f7a] transition-colors"
+                        >
+                          Download QR Code
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

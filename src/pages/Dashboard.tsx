@@ -107,7 +107,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   useEffect(() => {
     const checkVerification = async (email: string) => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/callback/check-verification/', {
+        const response = await fetch('https://mtima.onrender.com/callback/check-verification/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

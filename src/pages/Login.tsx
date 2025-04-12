@@ -27,8 +27,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     try {
 
+      //old endpoint https://mtima.onrender.com/api/v1/dj-rest-auth/login/
+
       // Use this endpoint for login https://mtima.onrender.com/api/v1/accounts/login/ with 2FA 
-      const response = await axios.post('https://mtima.onrender.com/api/v1/dj-rest-auth/login/', {
+      const response = await axios.post('https://mtima.onrender.com/api/v1/accounts/login/', {
           email,
           password,
         },

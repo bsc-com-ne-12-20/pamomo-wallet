@@ -255,17 +255,19 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
         </linearGradient>
       </defs>
     </svg>
-    <QRCode
-      value={userData.email}
-      size={220} // Enlarged size for better visibility
-      bgColor="#ffffff"
-      fgColor="url(#gradientColor)" // Apply enhanced gradient color
-    />
-    <div className="absolute inset-0 flex items-center justify-center">
+    <div className="relative">
+      {/* Faint Logo */}
       <img
         src="https://i.ibb.co/Pvz4mskG/hexagon.png"
         alt="Logo"
-        className="w-12 h-12 rounded-full" // Slightly larger logo
+        className="absolute inset-0 w-full h-full object-contain opacity-10" // Faint logo with reduced opacity
+      />
+      {/* QR Code */}
+      <QRCode
+        value={userData.email}
+        size={220} // Enlarged size for better visibility
+        bgColor="transparent" // Transparent background to blend with the logo
+        fgColor="url(#gradientColor)" // Apply enhanced gradient color
       />
     </div>
   </div>

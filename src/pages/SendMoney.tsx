@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Loader2 from '../components/Loader2'; // Import Loader2
-import { Mail, ArrowLeft } from 'lucide-react';
+import { Mail, ArrowLeft, QrCode } from 'lucide-react'; // Import QrCode icon
 import axios from 'axios';
+import { QrReader } from 'react-qr-reader'; // Import QR code reader
 
 interface SendMoneyProps {
   onLogout: () => void;
@@ -21,6 +22,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
   const [loading, setLoading] = useState(true);
   const [isSending, setIsSending] = useState(false); // State to track loader visibility
   const [showSuccessPopup, setShowSuccessPopup] = useState(false); // State for success pop-up
+  const [showQRScanner, setShowQRScanner] = useState(false); // State to toggle QR scanner
   const navigate = useNavigate();
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,12 +34,27 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     setTotalDeduction(amountNum + fee);
   };
 
+  const handleScanQRCode = () => {
+    setShowQRScanner(true); // Show the QR scanner
+  };
+
+  const handleScanResult = (result: string | null) => {
+    if (result) {
+      setReceiver(result); // Set the scanned email as the receiver
+      setShowQRScanner(false); // Hide the QR scanner
+    }
+  };
+
+  const handleScanError = (error: any) => {
+    console.error('QR Scan Error:', error);
+    setShowQRScanner(false); // Hide the QR scanner on error
+  };
+
   useEffect(() => {
     const fetchBalance = async () => {
       const email = localStorage.getItem('email');
 
       if (!email) {
-        //setError('You are not logged in. Please log in again.');
         setLoading(false);
         return;
       }
@@ -180,6 +197,13 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                     value={receiver}
                     onChange={(e) => setReceiver(e.target.value)}
                   />
+                  <button
+                    type="button"
+                    onClick={handleScanQRCode}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#8928A4] hover:text-[#7a2391]"
+                  >
+                    <QrCode size={20} />
+                  </button>
                 </div>
               </div>
               
@@ -227,6 +251,33 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
           </div>
         )}
 
+        {/* QR Code Scanner */}
+        {showQRScanner && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full relative">
+      <h2 className="text-lg font-bold text-gray-800 mb-4">Scan QR Code</h2>
+      <div className="relative">
+        <QrReader
+          onResult={(result, error) => {
+            if (result) {
+              handleScanResult(result.getText()); // Process the scanned result
+            } else if (error) {
+              console.error('QR Scan Error:', error); // Log the error but don't close the scanner
+            }
+          }}
+          constraints={{ facingMode: 'environment' }} // Use the back camera on mobile devices
+          style={{ width: '100%' }}
+        />
+      </div>
+      <button
+        onClick={() => setShowQRScanner(false)}
+        className="w-full bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 mt-4"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
         {/* Success Pop-Up */}
         {showSuccessPopup && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">

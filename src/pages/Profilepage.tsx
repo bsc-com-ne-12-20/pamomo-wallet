@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft, UserRound, Mail, Phone, Calendar, User, Users } from 'lucide-react';
-import QRCode from "react-qr-code"; // Use default import for QRCode component
+import QRCode from 'react-qr-code'; // Correct import for QRCode component
 
 interface UserProfile {
   name: string;
@@ -102,7 +102,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-6 py-10">
         <button
           onClick={() => navigate('/dashboard')}
           className="flex items-center text-[#8928A4] mb-6 hover:underline transition-colors"
@@ -168,7 +168,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
           </div>
         ) : (
           <div className="flex justify-center">
-            <div className="w-full max-w-2xl">
+            <div className="w-full max-w-3xl">
               <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
                 <div className="text-center py-6 bg-gradient-to-r from-[#8928A4] to-[#6a1f7a] text-white">
                   <h2 className="text-2xl font-bold">USER PROFILE</h2>
@@ -239,9 +239,37 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
 
                       {/* QR Code Section */}
                       <div className="flex flex-col items-center mt-8">
-                        <h4 className="text-lg font-medium text-gray-700 mb-4">Your QR Code</h4>
-                        <QRCode value={userData.email} size={128} bgColor="#ffffff" fgColor="#000000" />
-                      </div>
+  <h4 className="text-lg font-medium text-gray-700 mb-4">Your QR Code</h4>
+  <div className="relative">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="0"
+      height="0"
+      className="absolute"
+    >
+      <defs>
+        <linearGradient id="gradientColor" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style={{ stopColor: '#8928A4', stopOpacity: 1 }} />
+          <stop offset="50%" style={{ stopColor: '#6a1f7a', stopOpacity: 1 }} />
+          <stop offset="100%" style={{ stopColor: '#4a148c', stopOpacity: 1 }} />
+        </linearGradient>
+      </defs>
+    </svg>
+    <QRCode
+      value={userData.email}
+      size={220} // Enlarged size for better visibility
+      bgColor="#ffffff"
+      fgColor="url(#gradientColor)" // Apply enhanced gradient color
+    />
+    <div className="absolute inset-0 flex items-center justify-center">
+      <img
+        src="https://i.ibb.co/Pvz4mskG/hexagon.png"
+        alt="Logo"
+        className="w-12 h-12 rounded-full" // Slightly larger logo
+      />
+    </div>
+  </div>
+</div>
                     </div>
                   </div>
                 </div>

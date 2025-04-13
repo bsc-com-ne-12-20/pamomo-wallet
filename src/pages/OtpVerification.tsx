@@ -92,11 +92,11 @@ const handleOtpSubmit = async (e: React.FormEvent) => {
           <Hexagon size={64} className="text-[#8928A4]" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Pamomo</h2>
-        <p className="mt-2 text-center text-sm text-gray-600">Digital Wallet Management</p>
+        <p className="mt-2 text-center text-sm text-gray-600"> Secure Digital Wallet</p>
 
         <h2 className="mt-8 text-2xl font-bold mb-2 text-gray-800 dark:text-white">Verify OTP</h2>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
-          Enter the 6-digit code sent to <span className="font-semibold">{email}</span>
+          Enter the 6-digit code from your authenticator app
         </p>
 
         <form onSubmit={(e) => { e.preventDefault(); handleOtpSubmit(e); }} className="w-full mt-8 space-y-6">
@@ -138,13 +138,7 @@ const handleOtpSubmit = async (e: React.FormEvent) => {
           )}
 
           <div className="text-sm text-gray-600 dark:text-gray-300 mb-6 mt-4">
-            Didn't receive code?{" "}
-            <a
-              href="#"
-              className="text-purple-900 hover:underline dark:text-blue-900 transition-colors duration-300 hover:text-purple-600 dark:hover:text-purple-900"
-            >
-              Resend OTP
-            </a>
+            {/* some text here */}
           </div>
         </form>
       </div>

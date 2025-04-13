@@ -36,45 +36,54 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({ handleOtpSuccess }) =
     }
   };
 
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // In OtpVerification.tsx - Update the handleOtpSubmit function
 
-    if (otp.some((digit) => digit === '') || otp.length !== 6 || !pre_2fa_user_id) {
-      setError('Please enter a valid 6-digit OTP or missing user info.');
-      return;
-    }
+const handleOtpSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    setIsLoading(true);
-    setError('');
+  if (otp.some((digit) => digit === '') || otp.length !== 6 || !pre_2fa_user_id) {
+    setError('Please enter a valid 6-digit OTP or missing user info.');
+    return;
+  }
 
-    try {
-      // Attempt to verify OTP
-      const response = await axios.post('https://mtima.onrender.com/api/v1/accounts/verify-otp/', {
-        otp: otp.join(''), // Join the OTP digits as a string
-        pre_2fa_user_id: Number(pre_2fa_user_id),
-      });
+  setIsLoading(true);
+  setError('');
 
-      const data = response.data;
+  try {
+    // Attempt to verify OTP
+    const response = await axios.post('https://mtima.onrender.com/api/v1/accounts/verify-otp/', {
+      otp: otp.join(''), // Join the OTP digits as a string
+      pre_2fa_user_id: Number(pre_2fa_user_id),
+    });
 
-      if (data?.token) {
-        handleOtpSuccess(); // Call the success handler to update the state and localStorage
-        localStorage.setItem('authToken', data.token);
-        localStorage.removeItem('pre_2fa_user_id');
-        localStorage.setItem('email', email);
-        navigate('/dashboard', { replace: true });
-      } else {
-        setError('Unexpected response from server.');
-      }
-    } catch (err: any) {
-      // Log the error for debugging purposes
-      console.error('Error response data:', err.response?.data);
+    const data = response.data;
+
+    if (data?.token) {
+      // Store auth token in localStorage
+      localStorage.setItem('authToken', data.token);
+      localStorage.removeItem('pre_2fa_user_id');
+      localStorage.setItem('email', email);
       
-      const backendError = err.response?.data?.error || 'An error occurred during OTP verification.';
-      setError(backendError);
-    } finally {
-      setIsLoading(false);
+      // Call the success handler to update the state in parent components
+      handleOtpSuccess();
+      
+      // Set an additional flag to indicate authentication is complete
+      localStorage.setItem('isAuthenticated', 'true');
+      
+      // Navigate to dashboard with replace to prevent back navigation to OTP page
+      navigate('/dashboard', { replace: true });
+    } else {
+      setError('Unexpected response from server.');
     }
-  };
+  } catch (err: any) {
+    // Error handling remains the same
+    console.error('Error response data:', err.response?.data);
+    const backendError = err.response?.data?.error || 'An error occurred during OTP verification.';
+    setError(backendError);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

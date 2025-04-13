@@ -17,12 +17,34 @@ import Security from './pages/Security'; // Import Security page
 import OtpVerification from './pages/OtpVerification';
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('authToken'));
+  // Update isAuthenticated to check for both authToken and isAuthenticated flag
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    !!localStorage.getItem('authToken') || localStorage.getItem('isAuthenticated') === 'true'
+  );
   const [isVerified, setIsVerified] = useState<boolean>(false);
   const [username, setUsername] = useState<string>(localStorage.getItem('username') || '');
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [isOtpVerified, setIsOtpVerified] = useState<boolean>(false);
+  const [isOtpVerified, setIsOtpVerified] = useState<boolean>(
+    localStorage.getItem('otpVerified') === 'true'
+  );
+
+  // Add an effect to listen for auth state changes
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      const hasAuthToken = !!localStorage.getItem('authToken');
+      if (hasAuthToken !== isAuthenticated) {
+        setIsAuthenticated(hasAuthToken);
+      }
+    };
+    
+    // Check auth status when component mounts and on storage events
+    window.addEventListener('storage', checkAuthStatus);
+    
+    return () => {
+      window.removeEventListener('storage', checkAuthStatus);
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -94,13 +116,6 @@ const App = () => {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    const otpVerified = localStorage.getItem('otpVerified');
-    if (otpVerified === 'true') {
-      setIsOtpVerified(true);
-    }
-  }, []);
-
-  useEffect(() => {
     let timeout: NodeJS.Timeout;
 
     const handleActivity = () => {
@@ -114,45 +129,56 @@ const App = () => {
       setIsAuthenticated(false);
       setUsername('');
       setIsVerified(false);
+      setIsOtpVerified(false);
       localStorage.removeItem('authToken');
       localStorage.removeItem('email');
       localStorage.removeItem('username');
+      localStorage.removeItem('otpVerified');
+      localStorage.removeItem('isAuthenticated');
       window.location.href = '/login'; // Redirect to login
     };
 
-    // Add event listeners for user activity
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keypress', handleActivity);
-    window.addEventListener('click', handleActivity);
-    window.addEventListener('scroll', handleActivity);
+    // Only set up inactivity timeout if user is authenticated
+    if (isAuthenticated) {
+      // Add event listeners for user activity
+      window.addEventListener('mousemove', handleActivity);
+      window.addEventListener('keypress', handleActivity);
+      window.addEventListener('click', handleActivity);
+      window.addEventListener('scroll', handleActivity);
 
-    // Initialize the timeout
-    handleActivity();
+      // Initialize the timeout
+      handleActivity();
 
-    return () => {
-      // Cleanup event listeners and timeout on unmount
-      clearTimeout(timeout);
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('keypress', handleActivity);
-      window.removeEventListener('click', handleActivity);
-      window.removeEventListener('scroll', handleActivity);
-    };
-  }, []);
+      return () => {
+        // Cleanup event listeners and timeout on unmount
+        clearTimeout(timeout);
+        window.removeEventListener('mousemove', handleActivity);
+        window.removeEventListener('keypress', handleActivity);
+        window.removeEventListener('click', handleActivity);
+        window.removeEventListener('scroll', handleActivity);
+      };
+    }
+  }, [isAuthenticated]);
 
   const handleLogin = (user: string, token: string) => {
     setIsAuthenticated(true);
     setUsername(user);
     localStorage.setItem('authToken', token);
     localStorage.setItem('email', user);
+    localStorage.setItem('isAuthenticated', 'true');
+    return true;
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUsername('');
     setIsVerified(false);
+    setIsOtpVerified(false);
     localStorage.removeItem('authToken');
     localStorage.removeItem('email');
     localStorage.removeItem('username');
+    localStorage.removeItem('otpVerified');
+    localStorage.removeItem('isAuthenticated');
     window.location.href = '/login'; // Redirect to login
   };
 
@@ -160,10 +186,12 @@ const App = () => {
     setIsVerified(true);
   };
 
-  // Handle OTP Success: update state and localStorage
+  // Updated OTP Success handler to also set isAuthenticated
   const handleOtpSuccess = () => {
     setIsOtpVerified(true);
+    setIsAuthenticated(true); // Ensure authentication state is updated
     localStorage.setItem('otpVerified', 'true');
+    localStorage.setItem('isAuthenticated', 'true');
   };
 
   const handleSendMoney = (receiver: string, amount: number) => {
@@ -303,11 +331,12 @@ const App = () => {
           }
         />
         
-        <Route path="/otp-verification"
-             element={<OtpVerification 
-             handleOtpSuccess={handleOtpSuccess} 
-         />} 
-         />
+        <Route 
+          path="/otp-verification"
+          element={
+            <OtpVerification handleOtpSuccess={handleOtpSuccess} />
+          } 
+        />
 
         <Route path="*" element={<Navigate to="/login" />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

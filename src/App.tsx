@@ -107,7 +107,7 @@ const App = () => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         handleLogout();
-      }, 20 * 60 * 1000); // 20 minutes
+      }, 5 * 60 * 1000); // 5 minutes
     };
 
     const handleLogout = () => {

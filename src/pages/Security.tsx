@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import QRCode from 'react-qr-code'; // Import QRCode component
 
 const Security: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -8,6 +10,8 @@ const Security: React.FC = () => {
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [totpUri, setTotpUri] = useState(''); // State to store the TOTP URI
+  const [instructions, setInstructions] = useState(''); // State to store the instructions
   const navigate = useNavigate();
 
   const handleChangePassword = (e: React.FormEvent) => {
@@ -34,9 +38,43 @@ const Security: React.FC = () => {
     }, 1000);
   };
 
-  const handleToggle2FA = () => {
-    setIs2FAEnabled(!is2FAEnabled);
-    setSuccess(is2FAEnabled ? '2FA disabled successfully.' : '2FA enabled successfully.');
+  const handleEnable2FA = async () => {
+    setError('');
+    setSuccess('');
+    setTotpUri('');
+    setInstructions('');
+
+    const email = localStorage.getItem('email'); // Get the user's email from localStorage
+    if (!email) {
+      setError('User email not found. Please log in again.');
+      return;
+    }
+
+    try {
+      const response = await axios.post('http://127.0.0.1:8000/api/v1/accounts/enable-2fa/', {
+        email,
+      });
+
+      if (response.status === 200) {
+        const data = response.data;
+        setIs2FAEnabled(true);
+        setTotpUri(data.totp_uri); // Store the TOTP URI
+        setInstructions(data.instructions); // Store the instructions
+        setSuccess('2FA enabled successfully!');
+      } else {
+        setError('Failed to enable 2FA. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error enabling 2FA:', err);
+      setError('An error occurred while enabling 2FA. Please try again.');
+    }
+  };
+
+  const handleDisable2FA = () => {
+    setIs2FAEnabled(false);
+    setSuccess('2FA disabled successfully.');
+    setTotpUri('');
+    setInstructions('');
   };
 
   return (
@@ -125,8 +163,18 @@ const Security: React.FC = () => {
               ? '2FA is currently enabled for your account.'
               : '2FA is currently disabled for your account.'}
           </p>
+          {is2FAEnabled && totpUri && (
+  <div className="mb-4 bg-purple-50 p-4 rounded-md">
+    <div className="flex justify-center mb-4">
+      <QRCode value={totpUri} size={150} /> {/* Render QR code for TOTP URI */}
+    </div>
+    <p className="text-sm font-bold text-gray-800 text-center break-words bg-white p-2 rounded-md">
+      {totpUri}
+    </p>
+  </div>
+)}
           <button
-            onClick={handleToggle2FA}
+            onClick={is2FAEnabled ? handleDisable2FA : handleEnable2FA}
             className={`w-full ${
               is2FAEnabled ? 'bg-red-500 hover:bg-red-600' : 'bg-[#8928A4] hover:bg-[#7a2391]'
             } text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]`}

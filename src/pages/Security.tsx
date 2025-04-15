@@ -57,7 +57,7 @@ const Security: React.FC = () => {
     }
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/v1/accounts/enable-2fa/', {
+      const response = await axios.post('http://mtima.onrender.com/api/v1/accounts/enable-2fa/', {
         email,
       });
 
@@ -77,12 +77,35 @@ const Security: React.FC = () => {
     }
   };
 
-  const handleDisable2FA = () => {
-    setIs2FAEnabled(false);
-    localStorage.setItem('is2FAEnabled', 'false'); // Update 2FA status in local storage
-    setSuccess('2FA disabled successfully.');
-    setTotpUri('');
-    setInstructions('');
+  const handleDisable2FA = async () => {
+    setError('');
+    setSuccess('');
+
+    const email = localStorage.getItem('email'); // Get the user's email from local storage
+    if (!email) {
+      setError('User email not found. Please log in again.');
+      return;
+    }
+
+    try {
+      const response = await axios.post('http://mtima.onrender.com/api/v1/accounts/disable-2fa/', {
+        email,
+      });
+
+      if (response.status === 200) {
+        const data = response.data;
+        setIs2FAEnabled(false); // Update the state to reflect that 2FA is disabled
+        localStorage.setItem('is2FAEnabled', 'false'); // Update 2FA status in local storage
+        setSuccess(data.message); // Display the success message from the response
+        setTotpUri(''); // Clear the TOTP URI
+        setInstructions(''); // Clear the instructions
+      } else {
+        setError('Failed to disable 2FA. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error disabling 2FA:', err);
+      setError('An error occurred while disabling 2FA. Please try again.');
+    }
   };
 
   return (

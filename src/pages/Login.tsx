@@ -51,7 +51,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (pre2faUserId) {
           localStorage.setItem('email', email);
           localStorage.setItem('pre_2fa_user_id', pre2faUserId);
-    
+          localStorage.setItem('is2FAEnabled', 'true'); // Store 2FA status
           navigate('/otp-verification', {
             state: {
               email,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import QRCode from 'react-qr-code'; // Import QRCode component
@@ -7,12 +7,18 @@ const Security: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false); // State for 2FA status
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [totpUri, setTotpUri] = useState(''); // State to store the TOTP URI
   const [instructions, setInstructions] = useState(''); // State to store the instructions
   const navigate = useNavigate();
+
+  // Check 2FA status from local storage on component mount
+  useEffect(() => {
+    const stored2FAStatus = localStorage.getItem('is2FAEnabled') === 'true';
+    setIs2FAEnabled(stored2FAStatus);
+  }, []);
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +50,7 @@ const Security: React.FC = () => {
     setTotpUri('');
     setInstructions('');
 
-    const email = localStorage.getItem('email'); // Get the user's email from localStorage
+    const email = localStorage.getItem('email'); // Get the user's email from local storage
     if (!email) {
       setError('User email not found. Please log in again.');
       return;
@@ -60,6 +66,7 @@ const Security: React.FC = () => {
         setIs2FAEnabled(true);
         setTotpUri(data.totp_uri); // Store the TOTP URI
         setInstructions(data.instructions); // Store the instructions
+        localStorage.setItem('is2FAEnabled', 'true'); // Update 2FA status in local storage
         setSuccess('2FA enabled successfully!');
       } else {
         setError('Failed to enable 2FA. Please try again.');
@@ -72,6 +79,7 @@ const Security: React.FC = () => {
 
   const handleDisable2FA = () => {
     setIs2FAEnabled(false);
+    localStorage.setItem('is2FAEnabled', 'false'); // Update 2FA status in local storage
     setSuccess('2FA disabled successfully.');
     setTotpUri('');
     setInstructions('');
@@ -167,11 +175,11 @@ const Security: React.FC = () => {
             <div className="mb-4 bg-purple-50 p-4 rounded-md">
               <div className="flex justify-center mb-4">
                 <QRCode value={totpUri} size={150} /> {/* Render QR code for TOTP URI */}
-                </div>
-                <p className="text-sm font-bold text-gray-800 text-center break-words bg-white p-2 rounded-md">
-                  {totpUri}
-                  </p>
-                  </div>
+              </div>
+              <p className="text-sm font-bold text-gray-800 text-center break-words bg-white p-2 rounded-md">
+                {totpUri}
+              </p>
+            </div>
           )}
           <button
             onClick={is2FAEnabled ? handleDisable2FA : handleEnable2FA}

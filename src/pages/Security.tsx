@@ -164,15 +164,15 @@ const Security: React.FC = () => {
               : '2FA is currently disabled for your account.'}
           </p>
           {is2FAEnabled && totpUri && (
-  <div className="mb-4 bg-purple-50 p-4 rounded-md">
-    <div className="flex justify-center mb-4">
-      <QRCode value={totpUri} size={150} /> {/* Render QR code for TOTP URI */}
-    </div>
-    <p className="text-sm font-bold text-gray-800 text-center break-words bg-white p-2 rounded-md">
-      {totpUri}
-    </p>
-  </div>
-)}
+            <div className="mb-4 bg-purple-50 p-4 rounded-md">
+              <div className="flex justify-center mb-4">
+                <QRCode value={totpUri} size={150} /> {/* Render QR code for TOTP URI */}
+                </div>
+                <p className="text-sm font-bold text-gray-800 text-center break-words bg-white p-2 rounded-md">
+                  {totpUri}
+                  </p>
+                  </div>
+          )}
           <button
             onClick={is2FAEnabled ? handleDisable2FA : handleEnable2FA}
             className={`w-full ${

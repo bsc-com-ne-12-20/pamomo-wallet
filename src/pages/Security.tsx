@@ -12,6 +12,7 @@ const Security: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [totpUri, setTotpUri] = useState(''); // State to store the TOTP URI
   const [instructions, setInstructions] = useState(''); // State to store the instructions
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false); // State for confirmation modal
   const navigate = useNavigate();
 
   // Check 2FA status from local storage on component mount
@@ -57,7 +58,7 @@ const Security: React.FC = () => {
     }
 
     try {
-      const response = await axios.post('http://mtima.onrender.com/api/v1/accounts/enable-2fa/', {
+      const response = await axios.post('http://127.0.0.1:8000/api/v1/accounts/enable-2fa/', {
         email,
       });
 
@@ -88,7 +89,7 @@ const Security: React.FC = () => {
     }
 
     try {
-      const response = await axios.post('http://mtima.onrender.com/api/v1/accounts/disable-2fa/', {
+      const response = await axios.post('http://127.0.0.1:8000/api/v1/accounts/disable-2fa/', {
         email,
       });
 
@@ -106,6 +107,11 @@ const Security: React.FC = () => {
       console.error('Error disabling 2FA:', err);
       setError('An error occurred while disabling 2FA. Please try again.');
     }
+  };
+
+  const handleConfirmDisable2FA = () => {
+    setShowConfirmationModal(false); // Close the modal
+    handleDisable2FA(); // Proceed to disable 2FA
   };
 
   return (
@@ -205,7 +211,7 @@ const Security: React.FC = () => {
             </div>
           )}
           <button
-            onClick={is2FAEnabled ? handleDisable2FA : handleEnable2FA}
+            onClick={is2FAEnabled ? () => setShowConfirmationModal(true) : handleEnable2FA}
             className={`w-full ${
               is2FAEnabled ? 'bg-red-500 hover:bg-red-600' : 'bg-[#8928A4] hover:bg-[#7a2391]'
             } text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]`}
@@ -213,6 +219,33 @@ const Security: React.FC = () => {
             {is2FAEnabled ? 'Disable 2FA' : 'Enable 2FA'}
           </button>
         </div>
+
+        {/* Confirmation Modal */}
+        {showConfirmationModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-96">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Disable Two-Factor Authentication</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Are you sure you want to disable Two-Factor Authentication? This will reduce the security of your
+                account.
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setShowConfirmationModal(false)}
+                  className="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDisable2FA}
+                  className="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600"
+                >
+                  Disable 2FA
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Additional Security Section */}
         <div>

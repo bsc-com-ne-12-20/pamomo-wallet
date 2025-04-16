@@ -35,15 +35,15 @@ const EsignetSignInButton: React.FC = () => {
   const oidcConfig: OidcConfig = {
     acr_values:
       "mosip:idp:acr:generated-code mosip:idp:acr:biometrics mosip:idp:acr:static-code",
-    authorizeUri: "http://localhost:3000/authorize",
+    authorizeUri: "http://34.35.69.91:3000/authorize",
     claims_locales: "en",
-    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnmCni",
+    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtjxKY",
     display: "page",
     max_age: 21,
     response_type: "code",
     nonce: "",
     prompt: "consent",
-    redirect_uri: "http://localhost:8000/callback/",
+    redirect_uri: "https://mtima.onrender.com/callback/",
     scope: "openid profile",
     state: "eree2311",
     ui_locales: "en",

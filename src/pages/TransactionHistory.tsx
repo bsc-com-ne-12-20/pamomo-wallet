@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft } from 'lucide-react';
@@ -40,6 +40,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
   const [error, setError] = useState<{ message: string; needsVerification?: boolean }>({ message: '' });
   const [graphType, setGraphType] = useState<'transaction' | 'week' | 'month'>('month');
   const navigate = useNavigate();
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   const email = localStorage.getItem('email');
 
@@ -103,13 +104,13 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
 
   const formatMonthYear = (dateString: string) => {
     const date = new Date(dateString);
-    return `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
+    return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
   };
 
   const formatWeekYear = (dateString: string) => {
     const date = new Date(dateString);
     const week = Math.ceil(date.getDate() / 7);
-    return `Week ${week}, ${date.getFullYear()}`;
+    return `W${week}, ${date.getFullYear()}`;
   };
 
   const graphData = (() => {
@@ -201,6 +202,49 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
     ],
   };
 
+  const lineChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: {
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45,
+          font: {
+            size: 10
+          }
+        }
+      }
+    },
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          boxWidth: 10,
+          font: {
+            size: 10
+          }
+        }
+      }
+    }
+  };
+
+  const pieChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          boxWidth: 10,
+          font: {
+            size: 10
+          }
+        }
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
@@ -214,8 +258,8 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
           Back to Dashboard
         </button>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Transaction History</h2>
+        <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-6">Transaction History</h2>
 
           {loading && <p className="text-gray-500 text-center">Loading transactions...</p>}
 
@@ -233,7 +277,34 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
 
           {!loading && !error.message && visibleTransactions.length > 0 && (
             <>
-              <div className="overflow-x-auto mb-8">
+              {/* Mobile Transaction List View */}
+              <div className="block md:hidden">
+                <div className="space-y-4">
+                  {visibleTransactions.map((transaction) => (
+                    <div key={transaction.id} className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-900 capitalize">{transaction.type}</span>
+                        <span className="text-sm font-bold">
+                          Mk{transaction.amount.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mb-2">
+                        {new Date(transaction.time_stamp).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-700">
+                        {transaction.type === 'transfer'
+                          ? `From: ${transaction.sender} To: ${transaction.receiver}`
+                          : transaction.type === 'withdrawal'
+                          ? `Fee: Mk${transaction.fee?.toFixed(2)}`
+                          : 'Deposit'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Desktop Transaction Table View */}
+              <div className="hidden md:block overflow-x-auto mb-8">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -277,7 +348,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
               </div>
 
               {visibleTransactions.length < transactions.length && (
-                <div className="text-center">
+                <div className="text-center mb-8">
                   <button
                     onClick={loadMoreTransactions}
                     className="px-6 py-2 bg-[#8928A4] text-white rounded-md hover:bg-[#6a1f7a] transition-colors"
@@ -287,12 +358,12 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                 </div>
               )}
 
-              <div className="bg-white rounded-lg shadow-md p-6 mt-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Trends</h3>
-                <div className="flex space-x-4 mb-4">
+              <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mt-8">
+                <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Transaction Trends</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
                   <button
                     onClick={() => setGraphType('transaction')}
-                    className={`px-4 py-2 rounded-md ${
+                    className={`px-3 py-1 text-xs md:text-sm rounded-md ${
                       graphType === 'transaction' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
                     }`}
                   >
@@ -300,7 +371,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                   </button>
                   <button
                     onClick={() => setGraphType('week')}
-                    className={`px-4 py-2 rounded-md ${
+                    className={`px-3 py-1 text-xs md:text-sm rounded-md ${
                       graphType === 'week' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
                     }`}
                   >
@@ -308,31 +379,35 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                   </button>
                   <button
                     onClick={() => setGraphType('month')}
-                    className={`px-4 py-2 rounded-md ${
+                    className={`px-3 py-1 text-xs md:text-sm rounded-md ${
                       graphType === 'month' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
                     }`}
                   >
                     Per Month
                   </button>
                 </div>
-                <Line data={graphData} />
+                <div className="h-60 md:h-80" ref={chartContainerRef}>
+                  <Line data={graphData} options={lineChartOptions} />
+                </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-md p-6 mt-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Breakdown</h3>
+              <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mt-8">
+                <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Transaction Breakdown</h3>
                 <div className="flex justify-center">
-                  <div style={{ width: '300px', height: '300px' }}>
-                    <Pie
-                      data={pieData}
-                      options={{
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: {
-                            position: 'bottom',
-                          },
-                        },
-                      }}
-                    />
+                  <div className="h-52 w-52 md:h-64 md:w-64 lg:h-80 lg:w-80">
+                    <Pie data={pieData} options={pieChartOptions} />
+                  </div>
+                </div>
+                <div className="mt-4 text-center">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 p-3 rounded-md">
+                      <p className="text-xs text-gray-500">Total Credit</p>
+                      <p className="text-sm md:text-base font-bold text-blue-600">Mk{totalCredit.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-red-50 p-3 rounded-md">
+                      <p className="text-xs text-gray-500">Total Debit</p>
+                      <p className="text-sm md:text-base font-bold text-red-600">Mk{totalDebit.toFixed(2)}</p>
+                    </div>
                   </div>
                 </div>
               </div>

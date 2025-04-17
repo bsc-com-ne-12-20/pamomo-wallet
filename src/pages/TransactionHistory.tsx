@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
-import { Line } from 'react-chartjs-2';
+import { Line, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,9 +13,10 @@ import {
   Title,
   Tooltip,
   Legend,
+  ArcElement,
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement);
 
 interface Transaction {
   id: string;
@@ -131,6 +132,28 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
     ],
   };
 
+  // Calculate totals for the pie chart
+  const totalCredit = transactions
+    .filter((tx) => tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email))
+    .reduce((sum, tx) => sum + tx.amount, 0);
+
+  const totalDebit = transactions
+    .filter((tx) => tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email))
+    .reduce((sum, tx) => sum + tx.amount, 0);
+
+  // Prepare data for the pie chart
+  const pieData = {
+    labels: ['Credit (CR)', 'Debit (DR)'],
+    datasets: [
+      {
+        data: [totalCredit, totalDebit],
+        backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)'], // Blue for CR, Red for DR
+        borderColor: ['rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)'],
+        borderWidth: 1,
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
@@ -220,6 +243,25 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
               <div className="bg-white rounded-lg shadow-md p-6 mt-8">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Trends</h3>
                 <Line data={graphData} />
+              </div>
+
+              <div className="bg-white rounded-lg shadow-md p-6 mt-8">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Breakdown</h3>
+                <div className="flex justify-center">
+                  <div style={{ width: '300px', height: '300px' }}> {/* Set fixed size for the pie chart */}
+                    <Pie
+                      data={pieData}
+                      options={{
+                        maintainAspectRatio: false, // Allow custom width and height
+                        plugins: {
+                          legend: {
+                            position: 'bottom', // Position the legend below the chart
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </>
           )}

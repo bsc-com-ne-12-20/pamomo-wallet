@@ -213,43 +213,43 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={handleLogout} />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4 sm:py-8">
         {showNotVerifiedMessage && (
-          <div className="bg-red-200 text-red-800 p-4 rounded-lg mb-4">
+          <div className="bg-red-200 text-red-800 p-3 sm:p-4 rounded-lg mb-4 text-sm sm:text-base">
             You are <strong>Not Verified</strong>. Please verify your account to access all features. 
             <Link to="/verify" className="text-[#8928A4] font-bold ml-1 hover:underline">Verify</Link>!
           </div>
         )}
         
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+            <div className="mb-4 sm:mb-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center">
                 Welcome back, {username}
-                {isVerified && <img src={verifyIcon} className="inline ml-2 h-8 w-8" alt="Verified" />}
+                {isVerified && <img src={verifyIcon} className="inline ml-2 h-6 w-6 sm:h-8 sm:w-8" alt="Verified" />}
               </h2>
-              <p className="text-gray-600">Pamomo-Dashboard</p>
+              <p className="text-sm sm:text-base text-gray-600">Pamomo-Dashboard</p>
             </div>
-            <div className="mt-4 md:mt-0">
-              <div className="bg-[#8928A4] text-white px-6 py-4 rounded-lg relative">
+            <div className="w-full sm:w-auto">
+              <div className="bg-[#8928A4] text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg relative">
                 <div className="flex justify-between items-center">
-                  <p className="text-sm">Available Balance</p>
+                  <p className="text-xs sm:text-sm">Available Balance</p>
                   <button 
                     onClick={toggleBalanceVisibility}
                     className="ml-2 p-1 bg-white bg-opacity-20 rounded-full"
                     aria-label={showBalance ? "Hide balance" : "Show balance"}
                   >
                     {showBalance ? (
-                      <EyeOff className="h-5 w-5 text-white" />
+                      <EyeOff className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     ) : (
-                      <Eye className="h-5 w-5 text-white" />
+                      <Eye className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     )}
                   </button>
                 </div>
                 {loading ? (
-                  <p className="text-3xl font-bold">MK##,###.##</p>
+                  <p className="text-xl sm:text-3xl font-bold">MK##,###.##</p>
                 ) : (
-                  <p className="text-3xl font-bold">
+                  <p className="text-xl sm:text-3xl font-bold">
                     {showBalance ? (
                       `MK${balance !== null ? balance?.toLocaleString() : '##,###.##'}`
                     ) : (
@@ -262,80 +262,80 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Link to="/deposit" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center">
-              <div className="bg-purple-100 p-3 rounded-full mr-4">
-                <PlusCircle className="h-6 w-6 text-[#8928A4]" />
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+          <Link to="/deposit" className="bg-white rounded-lg shadow-md p-3 sm:p-6 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start">
+              <div className="bg-purple-100 p-2 sm:p-3 rounded-full sm:mr-4 mb-2 sm:mb-0">
+                <PlusCircle className="h-5 w-5 sm:h-6 sm:w-6 text-[#8928A4]" />
               </div>
-              <div>
-                <h3 className="text-lg font-semibold">Deposit Money</h3>
-                <p className="text-gray-600">Deposit or Pay</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/send" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center">
-              <div className="bg-purple-100 p-3 rounded-full mr-4">
-                <SendIcon className="h-6 w-6 text-[#8928A4]" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">Send Money</h3>
-                <p className="text-gray-600">Transfer to anyone</p>
+              <div className="text-center sm:text-left">
+                <h3 className="text-base sm:text-lg font-semibold">Deposit Money</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Deposit or Pay</p>
               </div>
             </div>
           </Link>
 
-          <Link to="/withdraw" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center">
-              <div className="bg-purple-100 p-3 rounded-full mr-4">
-                <p className="h-6 w-6 text-[#8928A4]"><b>MK</b></p>
+          <Link to="/send" className="bg-white rounded-lg shadow-md p-3 sm:p-6 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start">
+              <div className="bg-purple-100 p-2 sm:p-3 rounded-full sm:mr-4 mb-2 sm:mb-0">
+                <SendIcon className="h-5 w-5 sm:h-6 sm:w-6 text-[#8928A4]" />
               </div>
-              <div>
-                <h3 className="text-lg font-semibold">Withdraw Money</h3>
-                <p className="text-gray-600">Cash out funds</p>
+              <div className="text-center sm:text-left">
+                <h3 className="text-base sm:text-lg font-semibold">Send Money</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Transfer to anyone</p>
               </div>
             </div>
           </Link>
 
-          <Link to="/history" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center">
-              <div className="bg-purple-100 p-3 rounded-full mr-4">
-                <History className="h-6 w-6 text-[#8928A4]" />
+          <Link to="/withdraw" className="bg-white rounded-lg shadow-md p-3 sm:p-6 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start">
+              <div className="bg-purple-100 p-2 sm:p-3 rounded-full sm:mr-4 mb-2 sm:mb-0">
+                <p className="h-5 w-5 sm:h-6 sm:w-6 text-[#8928A4] flex items-center justify-center"><b>MK</b></p>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold">Transaction History</h3>
-                <p className="text-gray-600">View all transactions</p>
+              <div className="text-center sm:text-left">
+                <h3 className="text-base sm:text-lg font-semibold">Withdraw Money</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Cash out funds</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/history" className="bg-white rounded-lg shadow-md p-3 sm:p-6 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start">
+              <div className="bg-purple-100 p-2 sm:p-3 rounded-full sm:mr-4 mb-2 sm:mb-0">
+                <History className="h-5 w-5 sm:h-6 sm:w-6 text-[#8928A4]" />
+              </div>
+              <div className="text-center sm:text-left">
+                <h3 className="text-base sm:text-lg font-semibold">Transaction History</h3>
+                <p className="text-xs sm:text-sm text-gray-600">View all transactions</p>
               </div>
             </div>
           </Link>
         </div>
 
         {/* Recent Transactions */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Transactions</h2>
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Recent Transactions</h2>
           {transactions.length > 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
               <ul className="divide-y divide-gray-200">
                 {transactions.map((transaction) => (
-                  <li key={transaction.trans_id} className="py-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-gray-600">
+                  <li key={transaction.trans_id} className="py-3 sm:py-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                      <div className="mb-2 sm:mb-0">
+                        <p className="text-xs sm:text-sm text-gray-600">
                           Sent to: <span className="font-bold">{transaction.receiver}</span>
                         </p>
                         <p className="text-xs text-gray-400">
                           {new Date(transaction.time_stamp).toLocaleString()}
                         </p>
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <p className="text-sm font-bold text-red-500">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center w-full sm:w-auto space-y-2 sm:space-y-0 sm:space-x-4">
+                        <p className="text-xs sm:text-sm font-bold text-red-500">
                           -MK{parseFloat(transaction.amount).toLocaleString()}
                         </p>
                         <button
                           onClick={() => handleSendAgain(transaction.receiver)}
-                          className="bg-[#8928A4] text-white px-4 py-2 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                          className="bg-[#8928A4] text-white px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4] w-full sm:w-auto"
                         >
                           Send Again
                         </button>
@@ -346,48 +346,48 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               </ul>
             </div>
           ) : (
-            <p className="text-gray-500">No recent transactions found.</p>
+            <p className="text-sm sm:text-base text-gray-500">No recent transactions found.</p>
           )}
         </div>
       </div>
 
       {/* Send Again Modal */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Send Money</h2>
-            <p className="text-sm text-gray-600 mb-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 max-w-sm w-full">
+            <h2 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Send Money</h2>
+            <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 break-words">
               Sending to: <span className="font-bold">{selectedReceiver}</span>
             </p>
-            <div className="mb-4">
-              <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="mb-3 sm:mb-4">
+              <label htmlFor="amount" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Amount
               </label>
               <input
                 type="number"
                 id="amount"
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm p-2"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs sm:text-sm p-2"
                 placeholder="Enter amount"
                 value={sendAmount}
                 onChange={handleAmountChange}
               />
             </div>
             {sendAmount && (
-              <div className="mb-4 text-sm text-gray-700">
+              <div className="mb-3 sm:mb-4 text-xs sm:text-sm text-gray-700">
                 <p>Transaction Fee: <span className="font-bold">MK{transactionFee.toFixed(2)}</span></p>
                 <p>Total Deduction: <span className="font-bold">MK{totalDeduction.toFixed(2)}</span></p>
               </div>
             )}
-            <div className="flex justify-end space-x-4">
+            <div className="flex justify-end space-x-3 sm:space-x-4">
               <button
                 onClick={() => setShowModal(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                className="bg-gray-300 text-gray-700 px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm rounded-md hover:bg-gray-400"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSend}
-                className="bg-[#8928A4] text-white px-4 py-2 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                className="bg-[#8928A4] text-white px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
               >
                 {isSending ? 'Sending...' : 'Send'}
               </button>
@@ -398,15 +398,15 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
       {/* Success Pop-Up */}
       {showSuccessPopup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Transaction Successful</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              MK<span className="font-bold">{sendAmount}</span> has been sent successfully to <span className="font-bold">{selectedReceiver}</span>.
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 max-w-sm w-full">
+            <h2 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Transaction Successful</h2>
+            <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
+              MK<span className="font-bold">{sendAmount}</span> has been sent successfully to <span className="font-bold break-words">{selectedReceiver}</span>.
             </p>
             <button
               onClick={handlePopupClose}
-              className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+              className="w-full bg-[#8928A4] text-white py-1 sm:py-2 px-4 text-xs sm:text-sm rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
             >
               Close
             </button>

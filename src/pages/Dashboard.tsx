@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { SendIcon, History, PlusCircle } from 'lucide-react';
+import { SendIcon, History, PlusCircle, Eye, EyeOff } from 'lucide-react';
 import verifyIcon from '../components/images/verify.png';
 import axios from 'axios';
 
@@ -33,6 +33,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [totalDeduction, setTotalDeduction] = useState<number>(0);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState<boolean>(false);
+  const [showBalance, setShowBalance] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -73,6 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
       setLoading(false);
     }
   };
+  
   const fetchTransactions = async () => {
     const email = localStorage.getItem('email');
   
@@ -140,6 +142,10 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     fetchBalance();
     fetchTransactions();
   }, []);
+
+  const toggleBalanceVisibility = () => {
+    setShowBalance(!showBalance);
+  };
 
   const handleSendAgain = (receiverEmail: string) => {
     setSelectedReceiver(receiverEmail);
@@ -225,13 +231,30 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               <p className="text-gray-600">Pamomo-Dashboard</p>
             </div>
             <div className="mt-4 md:mt-0">
-              <div className="bg-[#8928A4] text-white px-6 py-4 rounded-lg">
-                <p className="text-sm">Available Balance</p>
+              <div className="bg-[#8928A4] text-white px-6 py-4 rounded-lg relative">
+                <div className="flex justify-between items-center">
+                  <p className="text-sm">Available Balance</p>
+                  <button 
+                    onClick={toggleBalanceVisibility}
+                    className="ml-2 p-1 bg-white bg-opacity-20 rounded-full"
+                    aria-label={showBalance ? "Hide balance" : "Show balance"}
+                  >
+                    {showBalance ? (
+                      <EyeOff className="h-5 w-5 text-white" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-white" />
+                    )}
+                  </button>
+                </div>
                 {loading ? (
                   <p className="text-3xl font-bold">MK##,###.##</p>
                 ) : (
                   <p className="text-3xl font-bold">
-                    MK{balance !== null ? balance?.toLocaleString() : '##,###.##'}
+                    {showBalance ? (
+                      `MK${balance !== null ? balance?.toLocaleString() : '##,###.##'}`
+                    ) : (
+                      'MK********'
+                    )}
                   </p>
                 )}
               </div>

@@ -12,10 +12,12 @@
   "dependencies": {
     "axios": "^1.6.7",
     "caniuse-lite": "^1.0.30001707",
+    "chart.js": "^4.4.9",
     "jsqr": "^1.4.0",
     "lucide-react": "^0.344.0",
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
+    "react-chartjs-2": "^5.3.0",
     "react-dom": "^18.3.1",
     "react-qr-code": "^2.0.15",
     "react-qr-reader": "^3.0.0-beta-1",

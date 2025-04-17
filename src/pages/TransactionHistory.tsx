@@ -1,15 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 interface Transaction {
-  id: number;
-  type: 'credit' | 'debit';
+  id: string;
+  sender: string;
+  receiver: string;
   amount: number;
   time_stamp: string;
-  description: string;
 }
 
 interface TransactionHistoryProps {
@@ -19,6 +32,7 @@ interface TransactionHistoryProps {
 
 const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLogout }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [visibleTransactions, setVisibleTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; needsVerification?: boolean }>({ message: '' });
   const navigate = useNavigate();
@@ -47,25 +61,22 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
         }
 
         const transactionsData = response.data.map((tx: any) => ({
-          ...tx,
-          description: tx.type === 'credit' ? 'Deposit Funds' : tx.type === 'debit' ? 'Withdraw Funds' : 'Transfer Funds',
+          id: tx.trans_id,
+          sender: tx.sender,
+          receiver: tx.receiver,
+          amount: parseFloat(tx.amount),
+          time_stamp: tx.time_stamp,
         }));
 
         // Sort transactions by time_stamp (latest first)
         transactionsData.sort((a: any, b: any) => new Date(b.time_stamp).getTime() - new Date(a.time_stamp).getTime());
 
         setTransactions(transactionsData);
+        setVisibleTransactions(transactionsData.slice(0, 5)); // Show only the first 5 transactions initially
       } catch (err: any) {
-        if (err.response?.status === 403) {
-          setError({
-            message: 'Account Verification Required: Please verify your account to view transaction history',
-            needsVerification: true,
-          });
-        } else {
-          setError({
-            message: err.response?.data?.message || 'Failed to fetch transactions. Please try again later.',
-          });
-        }
+        setError({
+          message: err.response?.data?.message || 'Failed to fetch transactions. Please try again later.',
+        });
       } finally {
         setLoading(false);
       }
@@ -73,6 +84,40 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
 
     fetchTransactions();
   }, [username]);
+
+  // Prepare data for the graph (current month only)
+  const email = localStorage.getItem('email');
+  const currentMonth = new Date().getMonth();
+  const graphData = {
+    labels: transactions
+      .filter((tx) => new Date(tx.time_stamp).getMonth() === currentMonth)
+      .map((tx) => new Date(tx.time_stamp).toLocaleString()),
+    datasets: [
+      {
+        label: 'Sent Transactions',
+        data: transactions
+          .filter((tx) => tx.sender === email && new Date(tx.time_stamp).getMonth() === currentMonth)
+          .map((tx) => tx.amount),
+        borderColor: 'rgba(255, 99, 132, 1)', // Red for sent
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        tension: 0.4,
+      },
+      {
+        label: 'Received Transactions',
+        data: transactions
+          .filter((tx) => tx.receiver === email && new Date(tx.time_stamp).getMonth() === currentMonth)
+          .map((tx) => tx.amount),
+        borderColor: 'rgba(75, 192, 192, 1)', // Green for received
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.4,
+      },
+    ],
+  };
+
+  const loadMoreTransactions = () => {
+    const nextVisibleCount = visibleTransactions.length + 5;
+    setVisibleTransactions(transactions.slice(0, nextVisibleCount));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -94,117 +139,69 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
 
           {error.message && (
             <div className="text-center py-8">
-              <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8 text-red-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Action Required</h3>
-              <p className="text-gray-600 mb-6">{error.message}</p>
-
-              {error.needsVerification && (
-                <div className="space-y-4">
-                  <Link
-                    to="/verify"
-                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#8928A4] hover:bg-[#6a1f7a] transition-colors"
-                  >
-                    Complete Verification
-                  </Link>
-                </div>
-              )}
+              <p className="text-gray-600">{error.message}</p>
             </div>
           )}
 
-          {!loading && !error.message && transactions.length === 0 && (
+          {!loading && !error.message && visibleTransactions.length === 0 && (
             <div className="text-center py-8">
               <p className="text-gray-500">No transactions found</p>
             </div>
           )}
 
-          {!loading && !error.message && transactions.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {transactions.map((transaction) => (
-                    <tr key={transaction.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(transaction.time_stamp).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {transaction.description}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <span
-                          className={
-                            transaction.description === 'Deposit Funds'
-                              ? 'text-green-600'
-                              : transaction.description === 'Withdraw Funds'
-                              ? 'text-red-600'
-                              : 'text-blue-600'
-                          }
-                        >
-                          {transaction.description === 'Deposit Funds'
-                            ? `+Mk${transaction.amount}`
-                            : transaction.description === 'Withdraw Funds'
-                            ? `-Mk${transaction.amount}`
-                            : `Mk${transaction.amount}`}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center">
-                          {transaction.description === 'Deposit Funds' ? (
-                            <div className="bg-green-100 p-1 rounded-full mr-2">
-                              <ArrowDownLeft size={16} className="text-green-600" />
-                            </div>
-                          ) : transaction.description === 'Withdraw Funds' ? (
-                            <div className="bg-red-100 p-1 rounded-full mr-2">
-                              <ArrowUpRight size={16} className="text-red-600" />
-                            </div>
-                          ) : (
-                            <div className={`p-1 rounded-full mr-2 bg-blue-100`}>
-                              <ArrowLeft size={16} className="text-green-600" />
-                              <ArrowRight size={16} className="text-red-600" />
-                            </div>
-                          )}
-                          {transaction.description === 'Deposit Funds'
-                            ? 'Received'
-                            : transaction.description === 'Withdraw Funds'
-                            ? 'Withdrawn'
-                            : 'Transferred'}
-                        </div>
-                      </td>
+          {!loading && !error.message && visibleTransactions.length > 0 && (
+            <>
+              <div className="overflow-x-auto mb-8">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Sender
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Receiver
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {visibleTransactions.map((transaction) => (
+                      <tr key={transaction.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(transaction.time_stamp).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.sender}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.receiver}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          Mk{transaction.amount.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {visibleTransactions.length < transactions.length && (
+                <div className="text-center">
+                  <button
+                    onClick={loadMoreTransactions}
+                    className="px-6 py-2 bg-[#8928A4] text-white rounded-md hover:bg-[#6a1f7a] transition-colors"
+                  >
+                    Load More
+                  </button>
+                </div>
+              )}
+
+              <div className="bg-white rounded-lg shadow-md p-6 mt-8">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Trends (This Month)</h3>
+                <Line data={graphData} />
+              </div>
+            </>
           )}
         </div>
       </div>

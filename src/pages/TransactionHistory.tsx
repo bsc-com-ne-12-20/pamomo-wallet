@@ -81,7 +81,8 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
         }));
 
         const allTransactions = [...transferData, ...withdrawalData, ...depositData];
-        allTransactions.sort((a, b) => new Date(a.time_stamp).getTime() - new Date(b.time_stamp).getTime());
+        // Sort transactions by newest first
+        allTransactions.sort((a, b) => new Date(b.time_stamp).getTime() - new Date(a.time_stamp).getTime());
 
         setTransactions(allTransactions);
         setVisibleTransactions(allTransactions.slice(0, 5));

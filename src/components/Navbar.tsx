@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, LogOut, Menu, User, Settings, Shield } from 'lucide-react';
+import { Wallet, LogOut, Menu, User, Shield } from 'lucide-react';
 
 interface NavbarProps {
   username: string;
@@ -15,7 +15,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
   };
 
   return (
-    <nav className="bg-[#8928A4] text-white p-4">
+    <nav className="bg-[#8928A4] text-white p-4 relative z-30">
       <div className="container mx-auto flex justify-between items-center">
         <Link to="/dashboard" className="flex items-center space-x-2">
           <Wallet size={24} />
@@ -30,7 +30,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
             <span>Menu</span>
           </button>
           {isMenuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white text-[#8928A4] rounded-lg shadow-lg">
+            <div className="absolute right-0 mt-2 w-48 bg-white text-[#8928A4] rounded-lg shadow-lg z-40">
               <ul className="py-2">
                 <li>
                   <Link
@@ -39,15 +39,6 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
                   >
                     <User size={16} />
                     <span>Profile</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/settings"
-                    className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 transition"
-                  >
-                    <Settings size={16} />
-                    <span>Settings</span>
                   </Link>
                 </li>
                 <li>

@@ -213,7 +213,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={handleLogout} />
       
-      <div className="container mx-auto px-4 py-4 sm:py-8">
+      <div className="container mx-auto px-4 py-4 sm:py-8 relative z-10">
         {showNotVerifiedMessage && (
           <div className="bg-red-200 text-red-800 p-3 sm:p-4 rounded-lg mb-4 text-sm sm:text-base">
             You are <strong>Not Verified</strong>. Please verify your account to access all features. 

@@ -19,9 +19,11 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 interface Transaction {
   id: string;
-  sender: string;
-  receiver: string;
+  type: 'transfer' | 'deposit' | 'withdrawal';
+  sender?: string;
+  receiver?: string;
   amount: number;
+  fee?: number;
   time_stamp: string;
 }
 
@@ -50,29 +52,42 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
       }
 
       try {
-        const response = await axios.get(`https://mtima.onrender.com/api/v1/trsf/history/?email=${email}`);
-
-        if (response.status === 403) {
-          setError({
-            message: 'Verification Required: Your account needs to be verified to access transaction history',
-            needsVerification: true,
-          });
-          return;
-        }
-
-        const transactionsData = response.data.map((tx: any) => ({
+        // Fetch transfer history
+        const transferResponse = await axios.get(`https://mtima.onrender.com/api/v1/trsf/history/?email=${email}`);
+        const transferData = transferResponse.data.map((tx: any) => ({
           id: tx.trans_id,
+          type: 'transfer',
           sender: tx.sender,
           receiver: tx.receiver,
           amount: parseFloat(tx.amount),
           time_stamp: tx.time_stamp,
         }));
 
-        // Sort transactions by time_stamp (latest first)
-        transactionsData.sort((a: any, b: any) => new Date(b.time_stamp).getTime() - new Date(a.time_stamp).getTime());
+        // Fetch withdrawal history
+        const withdrawalResponse = await axios.get(`https://mtima.onrender.com/api/v1/wtdr/history/?email=${email}`);
+        const withdrawalData = withdrawalResponse.data.map((tx: any) => ({
+          id: tx.trans_id,
+          type: 'withdrawal',
+          amount: parseFloat(tx.amount),
+          fee: parseFloat(tx.withdrawal_fee),
+          time_stamp: tx.time_stamp,
+        }));
 
-        setTransactions(transactionsData);
-        setVisibleTransactions(transactionsData.slice(0, 5)); // Show only the first 5 transactions initially
+        // Fetch deposit history
+        const depositResponse = await axios.get(`https://mtima.onrender.com/api/v1/dpst/history/?email=${email}`);
+        const depositData = depositResponse.data.map((tx: any) => ({
+          id: tx.transaction_id,
+          type: 'deposit',
+          amount: parseFloat(tx.amount),
+          time_stamp: tx.time_stamp,
+        }));
+
+        // Combine all transactions and sort by time_stamp (oldest first)
+        const allTransactions = [...transferData, ...withdrawalData, ...depositData];
+        allTransactions.sort((a, b) => new Date(a.time_stamp).getTime() - new Date(b.time_stamp).getTime());
+
+        setTransactions(allTransactions);
+        setVisibleTransactions(allTransactions.slice(0, 5)); // Show only the first 5 transactions initially
       } catch (err: any) {
         setError({
           message: err.response?.data?.message || 'Failed to fetch transactions. Please try again later.',
@@ -85,38 +100,35 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
     fetchTransactions();
   }, [username]);
 
-  // Prepare data for the graph (current month only)
-  const email = localStorage.getItem('email');
-  const currentMonth = new Date().getMonth();
-  const graphData = {
-    labels: transactions
-      .filter((tx) => new Date(tx.time_stamp).getMonth() === currentMonth)
-      .map((tx) => new Date(tx.time_stamp).toLocaleString()),
-    datasets: [
-      {
-        label: 'Sent Transactions',
-        data: transactions
-          .filter((tx) => tx.sender === email && new Date(tx.time_stamp).getMonth() === currentMonth)
-          .map((tx) => tx.amount),
-        borderColor: 'rgba(255, 99, 132, 1)', // Red for sent
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        tension: 0.4,
-      },
-      {
-        label: 'Received Transactions',
-        data: transactions
-          .filter((tx) => tx.receiver === email && new Date(tx.time_stamp).getMonth() === currentMonth)
-          .map((tx) => tx.amount),
-        borderColor: 'rgba(75, 192, 192, 1)', // Green for received
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.4,
-      },
-    ],
-  };
-
   const loadMoreTransactions = () => {
     const nextVisibleCount = visibleTransactions.length + 5;
     setVisibleTransactions(transactions.slice(0, nextVisibleCount));
+  };
+
+  // Prepare data for the graph
+  const email = localStorage.getItem('email');
+  const graphData = {
+    labels: transactions.map((tx) => new Date(tx.time_stamp).toLocaleString()), // Oldest to newest
+    datasets: [
+      {
+        label: 'Credit (CR)',
+        data: transactions
+          .filter((tx) => (tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email)))
+          .map((tx) => tx.amount),
+        borderColor: 'rgba(54, 162, 235, 1)', // Blue for CR
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        tension: 0.4,
+      },
+      {
+        label: 'Debit (DR)',
+        data: transactions
+          .filter((tx) => (tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email)))
+          .map((tx) => tx.amount),
+        borderColor: 'rgba(255, 99, 132, 1)', // Red for DR
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        tension: 0.4,
+      },
+    ],
   };
 
   return (
@@ -159,10 +171,10 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                         Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Sender
+                        Type
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Receiver
+                        Details
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Amount
@@ -175,8 +187,16 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(transaction.time_stamp).toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.sender}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.receiver}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
+                          {transaction.type}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {transaction.type === 'transfer'
+                            ? `From: ${transaction.sender} To: ${transaction.receiver}`
+                            : transaction.type === 'withdrawal'
+                            ? `Fee: Mk${transaction.fee?.toFixed(2)}`
+                            : 'Deposit'}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           Mk{transaction.amount.toFixed(2)}
                         </td>
@@ -198,7 +218,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
               )}
 
               <div className="bg-white rounded-lg shadow-md p-6 mt-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Trends (This Month)</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Trends</h3>
                 <Line data={graphData} />
               </div>
             </>

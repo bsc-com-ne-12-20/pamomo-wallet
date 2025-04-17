@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
@@ -38,23 +38,24 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
   const [visibleTransactions, setVisibleTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; needsVerification?: boolean }>({ message: '' });
+  const [graphType, setGraphType] = useState<'transaction' | 'week' | 'month'>('month');
   const navigate = useNavigate();
+
+  const email = localStorage.getItem('email');
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      const email = localStorage.getItem('email');
-
       if (!email) {
-        setError({
-          message: 'Authentication required: Please log in to view your transactions',
-        });
+        setError({ message: 'Authentication required: Please log in to view your transactions' });
         setLoading(false);
         return;
       }
 
       try {
-        // Fetch transfer history
         const transferResponse = await axios.get(`https://mtima.onrender.com/api/v1/trsf/history/?email=${email}`);
+        const withdrawalResponse = await axios.get(`https://mtima.onrender.com/api/v1/wtdr/history/?email=${email}`);
+        const depositResponse = await axios.get(`https://mtima.onrender.com/api/v1/dpst/history/?email=${email}`);
+
         const transferData = transferResponse.data.map((tx: any) => ({
           id: tx.trans_id,
           type: 'transfer',
@@ -64,8 +65,6 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
           time_stamp: tx.time_stamp,
         }));
 
-        // Fetch withdrawal history
-        const withdrawalResponse = await axios.get(`https://mtima.onrender.com/api/v1/wtdr/history/?email=${email}`);
         const withdrawalData = withdrawalResponse.data.map((tx: any) => ({
           id: tx.trans_id,
           type: 'withdrawal',
@@ -74,8 +73,6 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
           time_stamp: tx.time_stamp,
         }));
 
-        // Fetch deposit history
-        const depositResponse = await axios.get(`https://mtima.onrender.com/api/v1/dpst/history/?email=${email}`);
         const depositData = depositResponse.data.map((tx: any) => ({
           id: tx.transaction_id,
           type: 'deposit',
@@ -83,56 +80,106 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
           time_stamp: tx.time_stamp,
         }));
 
-        // Combine all transactions and sort by time_stamp (oldest first)
         const allTransactions = [...transferData, ...withdrawalData, ...depositData];
         allTransactions.sort((a, b) => new Date(a.time_stamp).getTime() - new Date(b.time_stamp).getTime());
 
         setTransactions(allTransactions);
-        setVisibleTransactions(allTransactions.slice(0, 5)); // Show only the first 5 transactions initially
+        setVisibleTransactions(allTransactions.slice(0, 5));
       } catch (err: any) {
-        setError({
-          message: err.response?.data?.message || 'Failed to fetch transactions. Please try again later.',
-        });
+        setError({ message: err.response?.data?.message || 'Failed to fetch transactions. Please try again later.' });
       } finally {
         setLoading(false);
       }
     };
 
     fetchTransactions();
-  }, [username]);
+  }, [username, email]);
 
   const loadMoreTransactions = () => {
     const nextVisibleCount = visibleTransactions.length + 5;
     setVisibleTransactions(transactions.slice(0, nextVisibleCount));
   };
 
-  // Prepare data for the graph
-  const email = localStorage.getItem('email');
-  const graphData = {
-    labels: transactions.map((tx) => new Date(tx.time_stamp).toLocaleString()), // Oldest to newest
-    datasets: [
-      {
-        label: 'Credit (CR)',
-        data: transactions
-          .filter((tx) => (tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email)))
-          .map((tx) => tx.amount),
-        borderColor: 'rgba(54, 162, 235, 1)', // Blue for CR
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        tension: 0.4,
-      },
-      {
-        label: 'Debit (DR)',
-        data: transactions
-          .filter((tx) => (tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email)))
-          .map((tx) => tx.amount),
-        borderColor: 'rgba(255, 99, 132, 1)', // Red for DR
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        tension: 0.4,
-      },
-    ],
+  const formatMonthYear = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
   };
 
-  // Calculate totals for the pie chart
+  const formatWeekYear = (dateString: string) => {
+    const date = new Date(dateString);
+    const week = Math.ceil(date.getDate() / 7);
+    return `Week ${week}, ${date.getFullYear()}`;
+  };
+
+  const graphData = (() => {
+    if (graphType === 'transaction') {
+      return {
+        labels: transactions.map((tx) => new Date(tx.time_stamp).toLocaleString()),
+        datasets: [
+          {
+            label: 'Credit (CR)',
+            data: transactions
+              .filter((tx) => tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email))
+              .map((tx) => tx.amount),
+            borderColor: 'rgba(54, 162, 235, 1)',
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            tension: 0.4,
+          },
+          {
+            label: 'Debit (DR)',
+            data: transactions
+              .filter((tx) => tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email))
+              .map((tx) => tx.amount),
+            borderColor: 'rgba(255, 99, 132, 1)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            tension: 0.4,
+          },
+        ],
+      };
+    } else {
+      const groupBy = graphType === 'month' ? formatMonthYear : formatWeekYear;
+      const groupedData = transactions.reduce((acc, tx) => {
+        const key = groupBy(tx.time_stamp);
+
+        if (!acc[key]) {
+          acc[key] = { credit: 0, debit: 0 };
+        }
+
+        if (tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email)) {
+          acc[key].credit += tx.amount;
+        } else if (tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email)) {
+          acc[key].debit += tx.amount;
+        }
+
+        return acc;
+      }, {} as Record<string, { credit: number; debit: number }>);
+
+      const labels = Object.keys(groupedData);
+      const creditData = labels.map((key) => groupedData[key].credit);
+      const debitData = labels.map((key) => groupedData[key].debit);
+
+      return {
+        labels,
+        datasets: [
+          {
+            label: 'Credit (CR)',
+            data: creditData,
+            borderColor: 'rgba(54, 162, 235, 1)',
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            tension: 0.4,
+          },
+          {
+            label: 'Debit (DR)',
+            data: debitData,
+            borderColor: 'rgba(255, 99, 132, 1)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            tension: 0.4,
+          },
+        ],
+      };
+    }
+  })();
+
   const totalCredit = transactions
     .filter((tx) => tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email))
     .reduce((sum, tx) => sum + tx.amount, 0);
@@ -141,13 +188,12 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
     .filter((tx) => tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email))
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  // Prepare data for the pie chart
   const pieData = {
     labels: ['Credit (CR)', 'Debit (DR)'],
     datasets: [
       {
         data: [totalCredit, totalDebit],
-        backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)'], // Blue for CR, Red for DR
+        backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)'],
         borderColor: ['rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)'],
         borderWidth: 1,
       },
@@ -242,20 +288,46 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
 
               <div className="bg-white rounded-lg shadow-md p-6 mt-8">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Trends</h3>
+                <div className="flex space-x-4 mb-4">
+                  <button
+                    onClick={() => setGraphType('transaction')}
+                    className={`px-4 py-2 rounded-md ${
+                      graphType === 'transaction' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
+                    }`}
+                  >
+                    Per Transaction
+                  </button>
+                  <button
+                    onClick={() => setGraphType('week')}
+                    className={`px-4 py-2 rounded-md ${
+                      graphType === 'week' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
+                    }`}
+                  >
+                    Per Week
+                  </button>
+                  <button
+                    onClick={() => setGraphType('month')}
+                    className={`px-4 py-2 rounded-md ${
+                      graphType === 'month' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
+                    }`}
+                  >
+                    Per Month
+                  </button>
+                </div>
                 <Line data={graphData} />
               </div>
 
               <div className="bg-white rounded-lg shadow-md p-6 mt-8">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Breakdown</h3>
                 <div className="flex justify-center">
-                  <div style={{ width: '300px', height: '300px' }}> {/* Set fixed size for the pie chart */}
+                  <div style={{ width: '300px', height: '300px' }}>
                     <Pie
                       data={pieData}
                       options={{
-                        maintainAspectRatio: false, // Allow custom width and height
+                        maintainAspectRatio: false,
                         plugins: {
                           legend: {
-                            position: 'bottom', // Position the legend below the chart
+                            position: 'bottom',
                           },
                         },
                       }}

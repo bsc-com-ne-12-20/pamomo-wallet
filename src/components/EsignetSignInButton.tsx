@@ -26,7 +26,7 @@ interface OidcConfig {
 
 const EsignetSignInButton: React.FC = () => {
   const buttonConfig: ButtonConfig = {
-    labelText: "Sign in with e-Signet",
+    labelText: "Sign in with eSignet",
     shape: "soft-edges",
     theme: "filled-orange",
     type: "standard",
@@ -63,7 +63,7 @@ const EsignetSignInButton: React.FC = () => {
         {/* <Hexagon size={16} className="text-[#eb6f2d]" /> */}
         <img src={esignetlogo} alt="e-Signet Logo" />
       </div>
-      {buttonConfig.labelText}
+      <b>{buttonConfig.labelText}</b>
     </button>
   );
 };

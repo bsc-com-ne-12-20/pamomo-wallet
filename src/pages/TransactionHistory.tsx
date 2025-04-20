@@ -26,6 +26,7 @@ interface Transaction {
   amount: number;
   fee?: number;
   time_stamp: string;
+  display_time?: string; // Added for consistent display time
 }
 
 interface TransactionHistoryProps {
@@ -38,11 +39,26 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
   const [visibleTransactions, setVisibleTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; needsVerification?: boolean }>({ message: '' });
-  const [graphType, setGraphType] = useState<'transaction' | 'week' | 'month'>('month');
+  // Changed default graph type to 'transaction' instead of 'month'
+  const [graphType, setGraphType] = useState<'transaction' | 'week' | 'month'>('transaction');
   const navigate = useNavigate();
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   const email = localStorage.getItem('email');
+
+  // Function to format date consistently across the application
+  const formatDate = (dateString: string) => {
+    // Create a consistent date object using the original timestamp
+    const date = new Date(dateString);
+    // Format it with consistent formatting
+    return date.toLocaleString();
+  };
+  
+  // Format for chart labels - short format
+  const formatChartDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -64,6 +80,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
           receiver: tx.receiver,
           amount: parseFloat(tx.amount),
           time_stamp: tx.time_stamp,
+          display_time: formatDate(tx.time_stamp)
         }));
 
         const withdrawalData = withdrawalResponse.data.map((tx: any) => ({
@@ -72,6 +89,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
           amount: parseFloat(tx.amount),
           fee: parseFloat(tx.withdrawal_fee),
           time_stamp: tx.time_stamp,
+          display_time: formatDate(tx.time_stamp)
         }));
 
         const depositData = depositResponse.data.map((tx: any) => ({
@@ -79,10 +97,11 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
           type: 'deposit',
           amount: parseFloat(tx.amount),
           time_stamp: tx.time_stamp,
+          display_time: formatDate(tx.time_stamp)
         }));
 
         const allTransactions = [...transferData, ...withdrawalData, ...depositData];
-        // Sort transactions by newest first
+        // Sort transactions by newest first (for display list/table)
         allTransactions.sort((a, b) => new Date(b.time_stamp).getTime() - new Date(a.time_stamp).getTime());
 
         setTransactions(allTransactions);
@@ -115,23 +134,35 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
 
   const graphData = (() => {
     if (graphType === 'transaction') {
+      // For transaction mode, create a copy of transactions and sort by oldest first for the graph
+      const sortedTransactions = [...transactions].sort((a, b) => 
+        new Date(a.time_stamp).getTime() - new Date(b.time_stamp).getTime()
+      );
+      
+      // Use the original timestamp for data ordering, but format it consistently for display
       return {
-        labels: transactions.map((tx) => new Date(tx.time_stamp).toLocaleString()),
+        labels: sortedTransactions.map((tx) => formatChartDate(tx.time_stamp)),
         datasets: [
           {
             label: 'Credit (CR)',
-            data: transactions
+            data: sortedTransactions
               .filter((tx) => tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email))
-              .map((tx) => tx.amount),
+              .map((tx) => ({
+                x: formatChartDate(tx.time_stamp),
+                y: tx.amount
+              })),
             borderColor: 'rgba(54, 162, 235, 1)',
             backgroundColor: 'rgba(54, 162, 235, 0.2)',
             tension: 0.4,
           },
           {
             label: 'Debit (DR)',
-            data: transactions
+            data: sortedTransactions
               .filter((tx) => tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email))
-              .map((tx) => tx.amount),
+              .map((tx) => ({
+                x: formatChartDate(tx.time_stamp),
+                y: tx.amount
+              })),
             borderColor: 'rgba(255, 99, 132, 1)',
             backgroundColor: 'rgba(255, 99, 132, 0.2)',
             tension: 0.4,
@@ -140,28 +171,59 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
       };
     } else {
       const groupBy = graphType === 'month' ? formatMonthYear : formatWeekYear;
-      const groupedData = transactions.reduce((acc, tx) => {
+      const groupedData: Record<string, { credit: number; debit: number }> = {};
+      
+      // Create a copy of transactions and sort by oldest first
+      const sortedTransactions = [...transactions].sort((a, b) => 
+        new Date(a.time_stamp).getTime() - new Date(b.time_stamp).getTime()
+      );
+      
+      // Group by week or month
+      sortedTransactions.forEach((tx) => {
         const key = groupBy(tx.time_stamp);
 
-        if (!acc[key]) {
-          acc[key] = { credit: 0, debit: 0 };
+        if (!groupedData[key]) {
+          groupedData[key] = { credit: 0, debit: 0 };
         }
 
         if (tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email)) {
-          acc[key].credit += tx.amount;
+          groupedData[key].credit += tx.amount;
         } else if (tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email)) {
-          acc[key].debit += tx.amount;
+          groupedData[key].debit += tx.amount;
         }
+      });
 
-        return acc;
-      }, {} as Record<string, { credit: number; debit: number }>);
-
-      const labels = Object.keys(groupedData);
-      const creditData = labels.map((key) => groupedData[key].credit);
-      const debitData = labels.map((key) => groupedData[key].debit);
+      // For week/month grouping, ensure chronological order
+      const orderedLabels = Object.keys(groupedData).sort((a, b) => {
+        if (graphType === 'month') {
+          const [monthA, yearA] = a.split(' ');
+          const [monthB, yearB] = b.split(' ');
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          if (yearA !== yearB) {
+            return parseInt(yearA) - parseInt(yearB);
+          }
+          return months.indexOf(monthA) - months.indexOf(monthB);
+        } else {
+          // For week format "W1, 2023"
+          const weekYearA = a.match(/W(\d+), (\d+)/);
+          const weekYearB = b.match(/W(\d+), (\d+)/);
+          if (!weekYearA || !weekYearB) return 0;
+          
+          const [, weekA, yearA] = weekYearA;
+          const [, weekB, yearB] = weekYearB;
+          
+          if (yearA !== yearB) {
+            return parseInt(yearA) - parseInt(yearB);
+          }
+          return parseInt(weekA) - parseInt(weekB);
+        }
+      });
+      
+      const creditData = orderedLabels.map((key) => groupedData[key].credit);
+      const debitData = orderedLabels.map((key) => groupedData[key].debit);
 
       return {
-        labels,
+        labels: orderedLabels,
         datasets: [
           {
             label: 'Credit (CR)',
@@ -217,6 +279,34 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
       }
     },
     plugins: {
+      tooltip: {
+        callbacks: {
+          title: function(context: any) {
+            // Use the full timestamp in the tooltip
+            const index = context[0].dataIndex;
+            const datasetIndex = context[0].datasetIndex;
+            const dataset = context[0].chart.data.datasets[datasetIndex];
+            
+            if (graphType === 'transaction') {
+              // For transaction view, get the full date from the original transaction
+              const sortedTransactions = [...transactions].sort((a, b) => 
+                new Date(a.time_stamp).getTime() - new Date(b.time_stamp).getTime()
+              );
+              
+              const filteredTransactions = datasetIndex === 0 
+                ? sortedTransactions.filter(tx => tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email))
+                : sortedTransactions.filter(tx => tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email));
+              
+              if (filteredTransactions[index]) {
+                return formatDate(filteredTransactions[index].time_stamp);
+              }
+            }
+            
+            // For week/month view, return the label
+            return context[0].label;
+          }
+        }
+      },
       legend: {
         position: 'top' as const,
         labels: {
@@ -289,7 +379,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 mb-2">
-                        {new Date(transaction.time_stamp).toLocaleString()}
+                        {transaction.display_time}
                       </div>
                       <div className="text-xs text-gray-700">
                         {transaction.type === 'transfer'
@@ -326,7 +416,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                     {visibleTransactions.map((transaction) => (
                       <tr key={transaction.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(transaction.time_stamp).toLocaleString()}
+                          {transaction.display_time}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
                           {transaction.type}

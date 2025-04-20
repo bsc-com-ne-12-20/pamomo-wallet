@@ -34,8 +34,33 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState<boolean>(false);
   const [showBalance, setShowBalance] = useState<boolean>(false);
+  const [greeting, setGreeting] = useState<string>('');
 
   const navigate = useNavigate();
+
+  // Function to get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return 'Good morning';
+    } else if (hour >= 12 && hour < 18) {
+      return 'Good afternoon';
+    } else {
+      return 'Good evening';
+    }
+  };
+
+  // Set the greeting when the component mounts and update it periodically
+  useEffect(() => {
+    setGreeting(getGreeting());
+    
+    // Update greeting every minute in case user keeps the dashboard open across time periods
+    const intervalId = setInterval(() => {
+      setGreeting(getGreeting());
+    }, 60000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -225,10 +250,10 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
             <div className="mb-4 sm:mb-0">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center">
-                Welcome back, {username}
+                {greeting}, {username}
                 {isVerified && <img src={verifyIcon} className="inline ml-2 h-6 w-6 sm:h-8 sm:w-8" alt="Verified" />}
               </h2>
-              <p className="text-sm sm:text-base text-gray-600">Pamomo-Dashboard</p>
+              <p className="text-sm sm:text-base text-gray-600">Dashboard</p>
             </div>
             <div className="w-full sm:w-auto">
               <div className="bg-[#8928A4] text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg relative">

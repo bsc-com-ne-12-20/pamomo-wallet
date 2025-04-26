@@ -1,22 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ZoomIn, ZoomOut } from 'lucide-react';
 import axios from 'axios';
-import { Line, Pie } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from 'chart.js';
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement);
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  Pie, PieChart, Cell, ReferenceArea
+} from 'recharts';
 
 interface Transaction {
   id: string;
@@ -26,7 +16,7 @@ interface Transaction {
   amount: number;
   fee?: number;
   time_stamp: string;
-  display_time?: string; // Added for consistent display time
+  display_time?: string;
 }
 
 interface TransactionHistoryProps {
@@ -39,22 +29,40 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
   const [visibleTransactions, setVisibleTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; needsVerification?: boolean }>({ message: '' });
-  // Changed default graph type to 'transaction' instead of 'month'
   const [graphType, setGraphType] = useState<'transaction' | 'week' | 'month'>('transaction');
   const navigate = useNavigate();
   const chartContainerRef = useRef<HTMLDivElement>(null);
-
+  
+  // For zoom functionality
+  const [zoomLeft, setZoomLeft] = useState<number | null>(null);
+  const [zoomRight, setZoomRight] = useState<number | null>(null);
+  const [refAreaLeft, setRefAreaLeft] = useState<string | null>(null);
+  const [refAreaRight, setRefAreaRight] = useState<string | null>(null);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [originalData, setOriginalData] = useState<any[]>([]);
+  const [yDomain, setYDomain] = useState<[number, number] | null>(null);
+  
   const email = localStorage.getItem('email');
 
-  // Function to format date consistently across the application
+  // Colors for the charts
+  const COLORS = {
+    credit: {
+      line: '#3684eb',
+      fill: 'rgba(54, 162, 235, 0.2)',
+    },
+    debit: {
+      line: '#ff6384',
+      fill: 'rgba(255, 99, 132, 0.2)',
+    },
+  };
+
+  const PIE_COLORS = ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)'];
+
   const formatDate = (dateString: string) => {
-    // Create a consistent date object using the original timestamp
     const date = new Date(dateString);
-    // Format it with consistent formatting
     return date.toLocaleString();
   };
   
-  // Format for chart labels - short format
   const formatChartDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -101,7 +109,6 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
         }));
 
         const allTransactions = [...transferData, ...withdrawalData, ...depositData];
-        // Sort transactions by newest first (for display list/table)
         allTransactions.sort((a, b) => new Date(b.time_stamp).getTime() - new Date(a.time_stamp).getTime());
 
         setTransactions(allTransactions);
@@ -115,6 +122,34 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
 
     fetchTransactions();
   }, [username, email]);
+
+  useEffect(() => {
+    if (transactions.length > 0) {
+      const preparedData = prepareChartData();
+      setChartData(preparedData);
+      setOriginalData(preparedData);
+      
+      // Calculate initial y-domain based on data
+      calculateYDomain(preparedData);
+    }
+  }, [transactions, graphType]);
+
+  const calculateYDomain = (data: any[]) => {
+    if (data.length === 0) return;
+    
+    // Find max credit and debit values
+    let maxCredit = 0;
+    let maxDebit = 0;
+    
+    data.forEach(item => {
+      if (item.credit > maxCredit) maxCredit = item.credit;
+      if (item.debit > maxDebit) maxDebit = item.debit;
+    });
+    
+    // Set y-domain with some padding (20%)
+    const maxValue = Math.max(maxCredit, maxDebit);
+    setYDomain([0, maxValue * 1.2]);
+  };
 
   const loadMoreTransactions = () => {
     const nextVisibleCount = visibleTransactions.length + 5;
@@ -132,44 +167,32 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
     return `W${week}, ${date.getFullYear()}`;
   };
 
-  const graphData = (() => {
+  const prepareChartData = () => {
     if (graphType === 'transaction') {
-      // For transaction mode, create a copy of transactions and sort by oldest first for the graph
+      // Sort transactions by oldest first for the graph
       const sortedTransactions = [...transactions].sort((a, b) => 
         new Date(a.time_stamp).getTime() - new Date(b.time_stamp).getTime()
       );
       
-      // Use the original timestamp for data ordering, but format it consistently for display
-      return {
-        labels: sortedTransactions.map((tx) => formatChartDate(tx.time_stamp)),
-        datasets: [
-          {
-            label: 'Credit (CR)',
-            data: sortedTransactions
-              .filter((tx) => tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email))
-              .map((tx) => ({
-                x: formatChartDate(tx.time_stamp),
-                y: tx.amount
-              })),
-            borderColor: 'rgba(54, 162, 235, 1)',
-            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-            tension: 0.4,
-          },
-          {
-            label: 'Debit (DR)',
-            data: sortedTransactions
-              .filter((tx) => tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email))
-              .map((tx) => ({
-                x: formatChartDate(tx.time_stamp),
-                y: tx.amount
-              })),
-            borderColor: 'rgba(255, 99, 132, 1)',
-            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-            tension: 0.4,
-          },
-        ],
-      };
+      // Convert to format needed by recharts
+      return sortedTransactions.map((tx, index) => {
+        const date = new Date(tx.time_stamp);
+        const formattedTime = formatChartDate(tx.time_stamp);
+        
+        // Determine if this is a credit or debit transaction
+        const isCredit = tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email);
+        const isDebit = tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email);
+        
+        return {
+          name: formattedTime,
+          fullDate: date.toLocaleString(),
+          credit: isCredit ? tx.amount : 0,
+          debit: isDebit ? tx.amount : 0,
+          index // Add index for easier zoom reference
+        };
+      });
     } else {
+      // For week/month grouping
       const groupBy = graphType === 'month' ? formatMonthYear : formatWeekYear;
       const groupedData: Record<string, { credit: number; debit: number }> = {};
       
@@ -219,30 +242,59 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
         }
       });
       
-      const creditData = orderedLabels.map((key) => groupedData[key].credit);
-      const debitData = orderedLabels.map((key) => groupedData[key].debit);
-
-      return {
-        labels: orderedLabels,
-        datasets: [
-          {
-            label: 'Credit (CR)',
-            data: creditData,
-            borderColor: 'rgba(54, 162, 235, 1)',
-            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-            tension: 0.4,
-          },
-          {
-            label: 'Debit (DR)',
-            data: debitData,
-            borderColor: 'rgba(255, 99, 132, 1)',
-            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-            tension: 0.4,
-          },
-        ],
-      };
+      // Convert to format needed by recharts
+      return orderedLabels.map((key, index) => ({
+        name: key,
+        credit: groupedData[key].credit,
+        debit: groupedData[key].debit,
+        index // Add index for easier zoom reference
+      }));
     }
-  })();
+  };
+
+  // For zoom functionality
+  const handleMouseDown = (e: any) => {
+    if (!e || !e.activeLabel) return;
+    setRefAreaLeft(e.activeLabel);
+  };
+
+  const handleMouseMove = (e: any) => {
+    if (!e || !e.activeLabel || !refAreaLeft) return;
+    setRefAreaRight(e.activeLabel);
+  };
+
+  const handleMouseUp = () => {
+    if (!refAreaLeft || !refAreaRight) return;
+
+    // Find indices of the left and right ref areas
+    let leftIndex = chartData.findIndex(item => item.name === refAreaLeft);
+    let rightIndex = chartData.findIndex(item => item.name === refAreaRight);
+    
+    // Sort indices if needed
+    if (leftIndex > rightIndex) {
+      [leftIndex, rightIndex] = [rightIndex, leftIndex];
+    }
+
+    // Apply zoom only if a valid range is selected
+    if (rightIndex - leftIndex > 0) {
+      const zoomedData = chartData.slice(leftIndex, rightIndex + 1);
+      setChartData(zoomedData);
+      
+      // Calculate new y-domain for better visibility
+      calculateYDomain(zoomedData);
+    }
+    
+    // Reset reference areas
+    setRefAreaLeft(null);
+    setRefAreaRight(null);
+  };
+
+  const resetZoom = () => {
+    setChartData(originalData);
+    calculateYDomain(originalData);
+    setRefAreaLeft(null);
+    setRefAreaRight(null);
+  };
 
   const totalCredit = transactions
     .filter((tx) => tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email))
@@ -252,87 +304,85 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
     .filter((tx) => tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email))
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const pieData = {
-    labels: ['Credit (CR)', 'Debit (DR)'],
-    datasets: [
-      {
-        data: [totalCredit, totalDebit],
-        backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)'],
-        borderColor: ['rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)'],
-        borderWidth: 1,
-      },
-    ],
+  const pieData = [
+    { name: 'Credit (CR)', value: totalCredit },
+    { name: 'Debit (DR)', value: totalDebit }
+  ];
+
+  // Custom tooltip for the area chart
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded shadow-sm">
+          <p className="text-xs font-medium">{graphType === 'transaction' ? payload[0]?.payload.fullDate : label}</p>
+          {payload.map((entry: any, index: number) => (
+            entry.value > 0 && (
+              <p key={index} className="text-xs" style={{ color: entry.color }}>
+                {entry.name}: Mk{entry.value.toFixed(2)}
+              </p>
+            )
+          ))}
+        </div>
+      );
+    }
+    return null;
   };
 
-  const lineChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: {
-        ticks: {
-          maxRotation: 45,
-          minRotation: 45,
-          font: {
-            size: 10
-          }
-        }
-      }
-    },
-    plugins: {
-      tooltip: {
-        callbacks: {
-          title: function(context: any) {
-            // Use the full timestamp in the tooltip
-            const index = context[0].dataIndex;
-            const datasetIndex = context[0].datasetIndex;
-            const dataset = context[0].chart.data.datasets[datasetIndex];
-            
-            if (graphType === 'transaction') {
-              // For transaction view, get the full date from the original transaction
-              const sortedTransactions = [...transactions].sort((a, b) => 
-                new Date(a.time_stamp).getTime() - new Date(b.time_stamp).getTime()
-              );
-              
-              const filteredTransactions = datasetIndex === 0 
-                ? sortedTransactions.filter(tx => tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver === email))
-                : sortedTransactions.filter(tx => tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.sender === email));
-              
-              if (filteredTransactions[index]) {
-                return formatDate(filteredTransactions[index].time_stamp);
-              }
-            }
-            
-            // For week/month view, return the label
-            return context[0].label;
-          }
-        }
-      },
-      legend: {
-        position: 'top' as const,
-        labels: {
-          boxWidth: 10,
-          font: {
-            size: 10
-          }
-        }
-      }
-    }
+  // Custom renderer for Pie chart labels - more responsive for small screens
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }: any) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    // On small screens, only show percentage without the label text
+    const isMobile = window.innerWidth < 640;
+    
+    // For very small amounts (less than 1%), don't show labels
+    if (percent < 0.01) return null;
+
+    return (
+      <text 
+        x={x} 
+        y={y} 
+        fill="white" 
+        textAnchor={x > cx ? 'start' : 'end'} 
+        dominantBaseline="central"
+        fontSize={isMobile ? "10px" : "12px"}
+      >
+        {isMobile ? `${(percent * 100).toFixed(0)}%` : `${name}: ${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
   };
 
-  const pieChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'bottom' as const,
-        labels: {
-          boxWidth: 10,
-          font: {
-            size: 10
-          }
-        }
-      }
+  // Custom tooltip for pie chart
+  const PieCustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
+          <p className="text-xs font-medium">{payload[0].name}</p>
+          <p className="text-xs" style={{ color: payload[0].color }}>
+            Amount: Mk{payload[0].value.toFixed(2)}
+          </p>
+          <p className="text-xs">
+            {(payload[0].payload.percent * 100).toFixed(1)}% of total
+          </p>
+        </div>
+      );
     }
+    return null;
+  };
+
+  // Calculate the pie chart size based on screen size
+  const getPieChartSize = () => {
+    // Get current viewport width
+    const viewportWidth = window.innerWidth;
+    
+    if (viewportWidth < 350) return { width: 160, height: 160 };
+    if (viewportWidth < 480) return { width: 200, height: 200 };
+    if (viewportWidth < 640) return { width: 240, height: 240 };
+    if (viewportWidth < 768) return { width: 260, height: 260 };
+    return { width: 300, height: 300 };
   };
 
   return (
@@ -452,7 +502,10 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                 <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Transaction Trends</h3>
                 <div className="flex flex-wrap gap-2 mb-4">
                   <button
-                    onClick={() => setGraphType('transaction')}
+                    onClick={() => {
+                      setGraphType('transaction');
+                      resetZoom();
+                    }}
                     className={`px-3 py-1 text-xs md:text-sm rounded-md ${
                       graphType === 'transaction' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
                     }`}
@@ -460,7 +513,10 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                     Per Transaction
                   </button>
                   <button
-                    onClick={() => setGraphType('week')}
+                    onClick={() => {
+                      setGraphType('week');
+                      resetZoom();
+                    }}
                     className={`px-3 py-1 text-xs md:text-sm rounded-md ${
                       graphType === 'week' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
                     }`}
@@ -468,7 +524,10 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                     Per Week
                   </button>
                   <button
-                    onClick={() => setGraphType('month')}
+                    onClick={() => {
+                      setGraphType('month');
+                      resetZoom();
+                    }}
                     className={`px-3 py-1 text-xs md:text-sm rounded-md ${
                       graphType === 'month' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
                     }`}
@@ -476,20 +535,124 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                     Per Month
                   </button>
                 </div>
+                
+                <div className="flex justify-end mb-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={resetZoom}
+                      className="flex items-center text-xs md:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded"
+                      disabled={chartData.length === originalData.length}
+                    >
+                      <ZoomOut size={14} className="mr-1" />
+                      Reset Zoom
+                    </button>
+                    <div className="text-xs text-gray-500">
+                      {chartData.length !== originalData.length && 
+                        `Showing ${chartData.length} of ${originalData.length} data points`
+                      }
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="h-60 md:h-80" ref={chartContainerRef}>
-                  <Line data={graphData} options={lineChartOptions} />
+                  {chartData.length > 0 && (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={chartData}
+                        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                        <XAxis 
+                          dataKey="name" 
+                          tick={{ fontSize: 10 }} 
+                          angle={-45} 
+                          textAnchor="end"
+                          height={60}
+                          allowDataOverflow
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 10 }} 
+                          domain={yDomain || [0, 'auto']}
+                          allowDataOverflow
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend wrapperStyle={{ fontSize: '10px' }} />
+                        <Area 
+                          type="monotone" 
+                          dataKey="credit" 
+                          name="Credit (CR)"
+                          stroke={COLORS.credit.line} 
+                          fill={COLORS.credit.fill} 
+                          stackId="1"
+                          activeDot={{ r: 5 }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="debit" 
+                          name="Debit (DR)"
+                          stroke={COLORS.debit.line} 
+                          fill={COLORS.debit.fill} 
+                          stackId="2"
+                          activeDot={{ r: 5 }}
+                        />
+                        
+                        {/* Reference area for zoom selection */}
+                        {refAreaLeft && refAreaRight && (
+                          <ReferenceArea 
+                            x1={refAreaLeft} 
+                            x2={refAreaRight} 
+                            strokeOpacity={0.3}
+                            fill="#8928A4" 
+                            fillOpacity={0.1} 
+                          />
+                        )}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+                
+                <div className="mt-2 text-xs text-gray-500 text-center">
+                  <p>Tip: Click and drag on the chart to zoom into a specific range</p>
                 </div>
               </div>
 
               <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mt-8">
                 <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Transaction Breakdown</h3>
-                <div className="flex justify-center">
-                  <div className="h-52 w-52 md:h-64 md:w-64 lg:h-80 lg:w-80">
-                    <Pie data={pieData} options={pieChartOptions} />
+                
+                {/* Fully responsive pie chart container */}
+                <div className="w-full flex justify-center items-center">
+                  <div className="w-full aspect-square max-w-xs sm:max-w-sm md:max-w-md">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={renderCustomizedLabel}
+                          outerRadius="80%"
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={PIE_COLORS[index % PIE_COLORS.length]} 
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<PieCustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
-                <div className="mt-4 text-center">
-                  <div className="grid grid-cols-2 gap-4">
+                
+                {/* Summary boxes for credit/debit - more responsive grid */}
+                <div className="mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-blue-50 p-3 rounded-md">
                       <p className="text-xs text-gray-500">Total Credit</p>
                       <p className="text-sm md:text-base font-bold text-blue-600">Mk{totalCredit.toFixed(2)}</p>
@@ -497,6 +660,20 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                     <div className="bg-red-50 p-3 rounded-md">
                       <p className="text-xs text-gray-500">Total Debit</p>
                       <p className="text-sm md:text-base font-bold text-red-600">Mk{totalDebit.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Legend for pie chart - helpful on small screens */}
+                <div className="mt-4">
+                  <div className="flex flex-wrap justify-center gap-6">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-blue-400 mr-2"></div>
+                      <span className="text-xs text-gray-600">Credit (CR)</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-red-400 mr-2"></div>
+                      <span className="text-xs text-gray-600">Debit (DR)</span>
                     </div>
                   </div>
                 </div>

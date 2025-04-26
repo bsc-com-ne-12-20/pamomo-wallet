@@ -18,11 +18,13 @@
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.0",
+    "react-charts": "^2.0.0-beta.7",
     "react-dom": "^18.3.1",
     "react-qr-code": "^2.0.15",
     "react-qr-reader": "^3.0.0-beta-1",
     "react-router-dom": "^6.22.3",
     "react-toastify": "^11.0.5",
+    "recharts": "^2.15.3",
     "styled-components": "^6.1.17"
   },
   "devDependencies": {

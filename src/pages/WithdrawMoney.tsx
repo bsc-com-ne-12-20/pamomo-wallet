@@ -213,6 +213,10 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
     navigate('/subscription');
   };
 
+  const formatMwk = (amount: number): string => {
+    return `MWK${amount.toLocaleString()}`;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
@@ -231,11 +235,11 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
             <AlertTriangle size={20} className="text-yellow-500 mr-3 flex-shrink-0" />
             <div>
               <p className="text-sm font-medium text-yellow-800">
-                Transaction Limit: {subscription.plan === 'FREE' ? 'MWK50,000' : 'MWK100,000'}
+                Transaction Limit: {formatMwk(TRANSACTION_LIMITS[subscription.plan as keyof typeof TRANSACTION_LIMITS])}
               </p>
               <p className="text-xs text-yellow-700 mt-1">
-                Your current subscription limits you to 
-                {subscription.plan === 'FREE' ? ' MWK50,000' : ' MWK100,000'} per transaction.
+                Your current subscription limits you to{' '}
+                {formatMwk(TRANSACTION_LIMITS[subscription.plan as keyof typeof TRANSACTION_LIMITS])} per transaction.
                 <button 
                   onClick={handleUpgradeClick}
                   className="ml-1 text-[#8928A4] hover:underline"
@@ -307,7 +311,7 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
                   <span>Amount</span>
                   {subscription && subscription.plan !== 'PREMIUM' && (
                     <span className="text-xs text-gray-500">
-                      Limit: MWK{getTransactionLimit().toLocaleString()}
+                      Limit: {formatMwk(getTransactionLimit())}
                     </span>
                   )}
                 </label>
@@ -348,8 +352,13 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
               
               {amount && (
                 <div className="mb-4 p-3 bg-gray-50 rounded-md">
-                  <p className="text-sm text-gray-700">Transaction Fee: <span className="font-medium">MK{transactionFee.toFixed(2)}</span></p>
-                  <p className="text-sm text-gray-700 font-bold mt-1">Total Deduction: <span className="text-[#8928A4]">MK{totalDeduction.toFixed(2)}</span></p>
+                  <p className="text-sm text-gray-700">
+                    Transaction Fee ({(WITHDRAWAL_FEE_PERCENTAGE * 100).toFixed()}%): 
+                    <span className="font-medium"> MK{transactionFee.toFixed(2)}</span>
+                  </p>
+                  <p className="text-sm text-gray-700 font-bold mt-1">
+                    Total Deduction: <span className="text-[#8928A4]">MK{totalDeduction.toFixed(2)}</span>
+                  </p>
                 </div>
               )}
 

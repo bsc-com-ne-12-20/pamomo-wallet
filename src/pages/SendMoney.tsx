@@ -1,51 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import Loader2 from '../components/Loader2'; // Import Loader2
-import { Mail, ArrowLeft, QrCode } from 'lucide-react'; // Import QrCode icon
+import Loader2 from '../components/Loader2';
+import { ArrowLeft, AlertTriangle, Wallet, CreditCard, Check } from 'lucide-react';
 import axios from 'axios';
-import { QrReader } from 'react-qr-reader'; // Import QR code reader
-import jsQR from 'jsqr'; // Import jsQR for decoding QR codes from images
+import jsQR from 'jsqr';
+
+// Import components
+import BalanceDisplay from '../components/sendmoney/BalanceDisplay';
+import SendMoneyForm from '../components/sendmoney/SendMoneyForm';
+import QRScannerModal from '../components/sendmoney/QRScannerModal';
+import ConfirmationModal from '../components/sendmoney/ConfirmationModal';
+import SuccessModal from '../components/sendmoney/SuccessModal';
+import { 
+  API_BASE_URL, 
+  TRANSACTION_LIMITS, 
+  TRANSFER_FEE_PERCENTAGE,
+  PAYMENT_API_URL,
+  PAYMENT_API_KEY
+} from '../utils/constants';
+
+interface SubscriptionPlan {
+  plan: string;
+  period: string;
+  status: string;
+  expiry_date: string;
+  auto_renew: boolean;
+  current_balance?: number;
+}
 
 interface SendMoneyProps {
   onLogout: () => void;
   isVerified: boolean;
 }
 
+type PaymentMethod = 'pamomo_wallet' | 'external_wallet';
+
 const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
   const [balance, setBalance] = useState<number | null>(null);
   const [receiver, setReceiver] = useState('');
-  const [receiverUsername, setReceiverUsername] = useState(''); // State for receiver's username
+  const [receiverUsername, setReceiverUsername] = useState('');
   const [amount, setAmount] = useState('');
   const [transactionFee, setTransactionFee] = useState(0);
   const [totalDeduction, setTotalDeduction] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false); // State to track loader visibility
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false); // State for success pop-up
-  const [showQRScanner, setShowQRScanner] = useState(false); // State to toggle QR scanner
-  const [showConfirmation, setShowConfirmation] = useState(false); // State for confirmation popup
-  const [fetchingUsername, setFetchingUsername] = useState(false); // State to track username fetching
+  const [isSending, setIsSending] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [fetchingUsername, setFetchingUsername] = useState(false);
+  const [subscription, setSubscription] = useState<SubscriptionPlan | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pamomo_wallet');
+  const [showPaymentMethodSelection, setShowPaymentMethodSelection] = useState(true);
   const navigate = useNavigate();
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAmount(value);
     const amountNum = parseFloat(value) || 0;
-    const fee = amountNum * 0.03;
+    const fee = amountNum * TRANSFER_FEE_PERCENTAGE;
     setTransactionFee(fee);
     setTotalDeduction(amountNum + fee);
   };
 
   const handleScanQRCode = () => {
-    setShowQRScanner(true); // Show the QR scanner
+    setShowQRScanner(true);
   };
 
   const fetchUsername = async (email: string) => {
     setFetchingUsername(true);
     try {
-      const response = await axios.post("https://mtima.onrender.com/api/v1/accounts/get-username/", {
+      const response = await axios.post(`${API_BASE_URL}/accounts/get-username/`, {
         email
       }, {
         headers: {
@@ -69,10 +97,9 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
 
   const handleScanResult = async (result: string | null) => {
     if (result) {
-      setReceiver(result); // Set the scanned email as the receiver
-      setShowQRScanner(false); // Hide the QR scanner
+      setReceiver(result);
+      setShowQRScanner(false);
       
-      // Fetch username and show confirmation popup
       await fetchUsername(result);
       setShowConfirmation(true);
     }
@@ -80,12 +107,11 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
 
   const confirmQrCode = () => {
     setShowConfirmation(false);
-    // Keep the receiver email that was already set
   };
 
   const cancelQrCode = () => {
     setShowConfirmation(false);
-    setReceiver(''); // Clear the receiver email if canceled
+    setReceiver('');
     setReceiverUsername('');
   };
 
@@ -105,10 +131,9 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
             const imageData = ctx.getImageData(0, 0, img.width, img.height);
             const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
             if (qrCode) {
-              setReceiver(qrCode.data); // Set the decoded QR code data as the receiver
-              setShowQRScanner(false); // Hide the QR scanner
+              setReceiver(qrCode.data);
+              setShowQRScanner(false);
               
-              // Fetch username and show confirmation popup
               await fetchUsername(qrCode.data);
               setShowConfirmation(true);
             } else {
@@ -122,6 +147,38 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     }
   };
 
+  // Fetch user's subscription details
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      const email = localStorage.getItem('email');
+      if (!email) return;
+      
+      try {
+        setSubscriptionLoading(true);
+        const response = await axios.post(`${API_BASE_URL}/subscriptions/check-subscription/`, {
+          email
+        });
+        
+        if (response.status === 200) {
+          setSubscription(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch subscription details:', error);
+        setSubscription({
+          plan: 'FREE',
+          period: 'LIFETIME',
+          status: 'ACTIVE',
+          expiry_date: 'NEVER',
+          auto_renew: false
+        });
+      } finally {
+        setSubscriptionLoading(false);
+      }
+    };
+    
+    fetchSubscription();
+  }, []);
+
   useEffect(() => {
     const fetchBalance = async () => {
       const email = localStorage.getItem('email');
@@ -132,12 +189,12 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       }
 
       if (!isVerified) {
-        navigate('/verify'); // Redirect to verification page if not verified
+        navigate('/verify');
         return;
       }
 
       try {
-        const response = await fetch('https://mtima.onrender.com/api/v1/accounts/get-balance/', {
+        const response = await fetch(`${API_BASE_URL}/accounts/get-balance/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -161,34 +218,52 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     fetchBalance();
   }, [isVerified, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const checkTransactionLimit = (amountNum: number): boolean => {
+    if (!subscription) return true;
+    
+    const limit = TRANSACTION_LIMITS[subscription.plan as keyof typeof TRANSACTION_LIMITS] || TRANSACTION_LIMITS.FREE;
+    return amountNum <= limit;
+  };
+
+  const getTransactionLimit = (): number => {
+    if (!subscription) return TRANSACTION_LIMITS.FREE;
+    return TRANSACTION_LIMITS[subscription.plan as keyof typeof TRANSACTION_LIMITS] || TRANSACTION_LIMITS.FREE;
+  };
+
+  const handleSubmitPamomoWallet = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    setIsSending(true); // Show loader
+    setIsSending(true);
 
     if (!receiver || !amount) {
       setError('Please fill in all fields');
-      setTimeout(() => setIsSending(false), 3000); // Ensure loader stays for 3 seconds
+      setTimeout(() => setIsSending(false), 3000);
       return;
     }
 
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
-      setTimeout(() => setIsSending(false), 3000); // Ensure loader stays for 3 seconds
+      setTimeout(() => setIsSending(false), 3000);
+      return;
+    }
+
+    if (!checkTransactionLimit(amountNum)) {
+      setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
+      setTimeout(() => setIsSending(false), 3000);
       return;
     }
 
     if (amountNum > (balance || 0)) {
       setError('Insufficient balance');
-      setTimeout(() => setIsSending(false), 3000); // Ensure loader stays for 3 seconds
+      setTimeout(() => setIsSending(false), 3000);
       return;
     }
 
     try {
       const senderEmail = localStorage.getItem('email');
-      const response = await axios.post("https://mtima.onrender.com/api/v1/trsf/", {
+      const response = await axios.post(`${API_BASE_URL}/trsf/`, {
         sender_email: senderEmail,
         receiver_email: receiver,
         amount: amountNum
@@ -200,22 +275,112 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
 
       if (response.status === 201) {
         setTimeout(() => {
-          setIsSending(false); // Hide loader after 3 seconds
-          setShowSuccessPopup(true); // Show success pop-up
+          setIsSending(false);
+          setShowSuccessPopup(true);
         }, 3000);
       } else {
         setError('Transaction failed. Please try again.');
-        setTimeout(() => setIsSending(false), 3000); // Ensure loader stays for 3 seconds
+        setTimeout(() => setIsSending(false), 3000);
       }
     } catch (error) {
       setError('An error occurred while processing your transaction.');
-      setTimeout(() => setIsSending(false), 3000); // Ensure loader stays for 3 seconds
+      setTimeout(() => setIsSending(false), 3000);
     }
+  };
+
+  const handleSubmitExternalWallet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsSending(true);
+
+    if (!receiver || !amount) {
+      setError('Please fill in all fields');
+      setTimeout(() => setIsSending(false), 3000);
+      return;
+    }
+
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Please enter a valid amount');
+      setTimeout(() => setIsSending(false), 3000);
+      return;
+    }
+
+    if (!checkTransactionLimit(amountNum)) {
+      setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
+      setTimeout(() => setIsSending(false), 3000);
+      return;
+    }
+
+    // For external wallet, we use the payment gateway
+    try {
+      const senderEmail = localStorage.getItem('email');
+      
+      // Store transfer info in localStorage
+      localStorage.setItem('transferAmount', amount);
+      localStorage.setItem('transferReceiver', receiver);
+      localStorage.setItem('transferReceiverUsername', receiverUsername);
+
+      const response = await fetch(`${PAYMENT_API_URL}/payment`, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          Authorization: `Bearer ${PAYMENT_API_KEY}`,
+        },
+        body: JSON.stringify({
+          currency: 'MWK',
+          amount: amountNum.toString(),
+          callback_url: 'https://pamomo-wallet.netlify.app/verifytransfer',
+          return_url: 'https://pamomo-wallet.netlify.app/transfer/complete',
+          metadata: {
+            receiver_email: receiver,
+            sender_email: senderEmail,
+            transaction_type: 'transfer'
+          }
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.status === 'success' && result.data.checkout_url) {
+        window.location.href = result.data.checkout_url;
+      } else {
+        setError('Transaction initiation failed. Please try again.');
+        setTimeout(() => setIsSending(false), 3000);
+      }
+    } catch (error) {
+      setError('An error occurred while processing your transaction.');
+      setTimeout(() => setIsSending(false), 3000);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    if (paymentMethod === 'pamomo_wallet') {
+      return handleSubmitPamomoWallet(e);
+    } else {
+      return handleSubmitExternalWallet(e);
+    }
+  };
+
+  const handlePaymentMethodSelect = (method: PaymentMethod) => {
+    setPaymentMethod(method);
+    setShowPaymentMethodSelection(false);
   };
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    navigate('/dashboard'); // Redirect to dashboard after closing the pop-up
+    navigate('/dashboard');
+  };
+
+  const handleUpgradeClick = () => {
+    navigate('/subscription');
+  };
+
+  const handleBackToPaymentSelection = () => {
+    setShowPaymentMethodSelection(true);
+    setError('');
   };
 
   const username = localStorage.getItem('username') || 'User';
@@ -225,15 +390,40 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       <Navbar username={username} onLogout={onLogout} />
       
       <div className="container mx-auto px-4 py-8">
-        <button 
-          onClick={() => navigate('/dashboard')} 
-          className="flex items-center text-[#8928A4] mb-6 hover:underline"
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium"
         >
-          <ArrowLeft size={16} className="mr-1" />
+          <ArrowLeft size={16} className="mr-2" />
           Back to Dashboard
         </button>
         
-        {isSending ? ( // Show loader while sending money
+        {subscription && subscription.plan !== 'PREMIUM' && !subscriptionLoading && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-center">
+            <AlertTriangle size={20} className="text-yellow-500 mr-3 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-yellow-800">
+                Transaction Limit: {subscription.plan === 'FREE' 
+                  ? `MWK${TRANSACTION_LIMITS.FREE.toLocaleString()}` 
+                  : `MWK${TRANSACTION_LIMITS.BASIC.toLocaleString()}`}
+              </p>
+              <p className="text-xs text-yellow-700 mt-1">
+                Your current subscription limits you to 
+                {subscription.plan === 'FREE' 
+                  ? ` MWK${TRANSACTION_LIMITS.FREE.toLocaleString()}` 
+                  : ` MWK${TRANSACTION_LIMITS.BASIC.toLocaleString()}`} per transaction.
+                <button 
+                  onClick={handleUpgradeClick}
+                  className="ml-1 text-[#8928A4] hover:underline"
+                >
+                  Upgrade now
+                </button>
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {isSending ? (
           <div className="flex justify-center items-center min-h-[50vh]">
             <Loader2 />
           </div>
@@ -241,186 +431,103 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
           <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Send Money</h2>
             
-            {loading ? (
-              <p>Loading balance...</p>
-            ) : (
-              <div className="bg-purple-50 p-4 rounded-lg mb-6">
-                <p className="text-sm text-gray-600">Available Balance</p>
-                <p className="text-xl font-bold text-[#8928A4]">MK{balance?.toLocaleString()}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label htmlFor="receiver" className="block text-sm font-medium text-gray-700 mb-1">
-                  Receiver's Email
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="email"
-                    id="receiver"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
-                    placeholder="email@example.com"
-                    value={receiver}
-                    onChange={(e) => setReceiver(e.target.value)}
-                  />
+            {showPaymentMethodSelection ? (
+              <div>
+                <p className="text-sm text-gray-600 mb-4">Select your payment method:</p>
+                
+                <div className="space-y-3">
                   <button
-                    type="button"
-                    onClick={handleScanQRCode}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#8928A4] hover:text-[#7a2391]"
+                    onClick={() => handlePaymentMethodSelect('pamomo_wallet')}
+                    className="w-full bg-white border-2 border-[#8928A4] p-4 rounded-lg flex items-center text-left hover:bg-[#f9f0fc] transition-colors"
                   >
-                    <QrCode size={20} />
+                    <Wallet className="text-[#8928A4] mr-3" />
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800">Pamomo Wallet</p>
+                      <p className="text-xs text-gray-500">Use your available balance: MK{balance?.toLocaleString() || '0'}</p>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handlePaymentMethodSelect('external_wallet')}
+                    className="w-full bg-white border border-gray-300 p-4 rounded-lg flex items-center text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <CreditCard className="text-gray-600 mr-3" />
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800">External Payment</p>
+                      <p className="text-xs text-gray-500">Pay using mobile money, credit card, or other options</p>
+                    </div>
                   </button>
                 </div>
               </div>
-              
-              <div className="mb-6">
-                <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-                  Amount
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <h1 className="text-[grey]"><b>MK</b></h1>
-                  </div>
-                  <input
-                    type="number"
-                    id="amount"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={handleAmountChange}
-                    min="0.01"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-              
-              {amount && (
-                <div className="mb-4 text-sm text-gray-700">
-                  <p>Transaction Fee: <span className="font-bold">MK{transactionFee.toFixed(2)}</span></p>
-                  <p>Total Deduction: <span className="font-bold">MK{totalDeduction.toFixed(2)}</span></p>
-                </div>
-              )}
-
-              {error && (
-                <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
-              
-              <button
-                type="submit"
-                className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
-              >
-                Send Money
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* QR Code Scanner */}
-        {showQRScanner && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full relative">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">Scan QR Code</h2>
-              <div className="relative mb-4">
-                <QrReader
-                  onResult={(result, error) => {
-                    if (result) {
-                      handleScanResult(result.getText()); // Process the scanned result
-                    } else if (error) {
-                      console.error('QR Scan Error:', error); // Log the error but don't close the scanner
-                    }
-                  }}
-                  constraints={{ facingMode: 'environment' }} // Use the back camera on mobile devices
-                  style={{ width: '100%' }}
-                />
-              </div>
-              <div className="mb-4">
-                <label
-                  htmlFor="qr-upload"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Or upload a QR code image
-                </label>
-                <input
-                  type="file"
-                  id="qr-upload"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#8928A4] file:text-white hover:file:bg-[#7a2391]"
-                />
-              </div>
-              <button
-                onClick={() => setShowQRScanner(false)}
-                className="w-full bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 mt-4"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Confirmation Pop-Up after QR scan */}
-        {showConfirmation && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">Confirm Recipient</h2>
-              
-              {fetchingUsername ? (
-                <div className="flex justify-center items-center py-4">
-                  <Loader2 />
-                </div>
-              ) : (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    You are about to send money to:
-                  </p>
-                  <div className="bg-purple-50 p-3 rounded-md">
-                    <p className="font-bold text-[#8928A4]">{receiverUsername}</p>
-                    <p className="text-sm text-gray-700">{receiver}</p>
+            ) : (
+              <div>
+                <div className="mb-6 bg-blue-50 p-3 rounded-lg flex items-center">
+                  {paymentMethod === 'pamomo_wallet' ? (
+                    <Wallet className="text-[#8928A4] mr-3" />
+                  ) : (
+                    <CreditCard className="text-gray-600 mr-3" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium">
+                      Payment Method: {paymentMethod === 'pamomo_wallet' ? 'Pamomo Wallet' : 'External Payment'}
+                    </p>
+                    <button 
+                      onClick={handleBackToPaymentSelection}
+                      className="text-xs text-[#8928A4] hover:underline mt-1"
+                    >
+                      Change payment method
+                    </button>
                   </div>
                 </div>
-              )}
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={cancelQrCode}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmQrCode}
-                  className="flex-1 bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
-                >
-                  Confirm
-                </button>
+
+                {paymentMethod === 'pamomo_wallet' && (
+                  <BalanceDisplay balance={balance} loading={loading} />
+                )}
+
+                <SendMoneyForm
+                  receiver={receiver}
+                  setReceiver={setReceiver}
+                  amount={amount}
+                  handleAmountChange={handleAmountChange}
+                  error={error}
+                  handleSubmit={handleSubmit}
+                  handleScanQRCode={handleScanQRCode}
+                  transactionFee={transactionFee}
+                  totalDeduction={totalDeduction}
+                  transactionLimit={getTransactionLimit()}
+                  showLimitWarning={!subscriptionLoading && !!subscription && subscription.plan !== 'PREMIUM'}
+                  submitButtonText={paymentMethod === 'pamomo_wallet' 
+                    ? 'Send from Pamomo Wallet' 
+                    : 'Continue to Payment'}
+                />
               </div>
-            </div>
+            )}
           </div>
         )}
 
-        {/* Success Pop-Up */}
-        {showSuccessPopup && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">Transaction Successful</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                MK<span className="font-bold">{amount}</span> has been sent successfully to <span className="font-bold">{receiverUsername || receiver}</span>.
-              </p>
-              <button
-                onClick={handlePopupClose}
-                className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
-              >
-                Go to Dashboard
-              </button>
-            </div>
-          </div>
-        )}
+        <QRScannerModal
+          show={showQRScanner}
+          onClose={() => setShowQRScanner(false)}
+          onScanResult={handleScanResult}
+          handleImageUpload={handleImageUpload}
+        />
+
+        <ConfirmationModal
+          show={showConfirmation}
+          receiver={receiver}
+          receiverUsername={receiverUsername}
+          onConfirm={confirmQrCode}
+          onCancel={cancelQrCode}
+          isLoading={fetchingUsername}
+        />
+
+        <SuccessModal
+          show={showSuccessPopup}
+          amount={amount}
+          receiver={receiver}
+          receiverUsername={receiverUsername}
+          onClose={handlePopupClose}
+        />
       </div>
     </div>
   );

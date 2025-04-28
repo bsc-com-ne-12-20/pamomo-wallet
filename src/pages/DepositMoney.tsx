@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Mail, DollarSign, ArrowLeft } from 'lucide-react';
+import { DollarSign, ArrowLeft, User } from 'lucide-react';
+import Loader2 from '../components/Loader2';
 
 interface DepositMoneyProps {
   username: string;
@@ -11,29 +12,35 @@ interface DepositMoneyProps {
 }
 
 const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
-  const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const userEmail = localStorage.getItem('email') || '';
 
   useEffect(() => {
+    // Check if email exists
+    if (!userEmail) {
+      setError('User email not found. Please log in again.');
+      return;
+    }
+
     const queryParams = new URLSearchParams(location.search);
     const txRef = queryParams.get('tx_ref');
 
     if (txRef) {
-      const savedEmail = localStorage.getItem('recipientEmail');
       const savedAmount = localStorage.getItem('depositAmount');
 
-      if (savedEmail && savedAmount) {
-        setRecipient(savedEmail);
-        verifyPayment(txRef, savedEmail);
+      if (savedAmount) {
+        setIsLoading(true);
+        verifyPayment(txRef, userEmail);
       } else {
-        setError('Recipient information missing. Please try again.');
+        setError('Transaction information missing. Please try again.');
       }
     }
-  }, [location]);
+  }, [location, userEmail]);
 
   const verifyPayment = async (txRef: string, email: string) => {
     try {
@@ -50,8 +57,7 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
       if (result.status === 'success' && result.data.status === 'success') {
         const deductedAmount = parseFloat(result.data.amount) * 0.97;
         await sendPaymentDetails(email, deductedAmount);
-        setSuccess('Payment successful. Amount deducted and sent.');
-        localStorage.removeItem('recipientEmail');
+        setSuccess('Payment successful. Amount has been added to your account.');
         localStorage.removeItem('depositAmount');
       } else {
         setError('Transaction verification failed.');
@@ -59,6 +65,8 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
     } catch (err) {
       setError('Error verifying payment. Please try again.');
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -86,15 +94,24 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setIsLoading(true);
 
-    if (!recipient || !amount) {
-      setError('Please fill in all fields');
+    if (!amount) {
+      setError('Please enter an amount');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!userEmail) {
+      setError('User email not found. Please log in again.');
+      setIsLoading(false);
       return;
     }
 
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
+      setIsLoading(false);
       return;
     }
 
@@ -117,15 +134,16 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
       const result = await response.json();
 
       if (result.status === 'success' && result.data.checkout_url) {
-        localStorage.setItem('recipientEmail', recipient);
         localStorage.setItem('depositAmount', amount);
         window.location.href = result.data.checkout_url;
       } else {
         setError('Transaction initiation failed. Please try again.');
+        setIsLoading(false);
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
       console.error(err);
+      setIsLoading(false);
     }
   };
 
@@ -133,78 +151,88 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
       <div className="container mx-auto px-4 py-8">
+        
         <button
           onClick={() => navigate('/dashboard')}
-          className="flex items-center text-[#8928A4] mb-6 hover:underline"
-        >
-          <ArrowLeft size={16} className="mr-1" />
+          className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium">
+          <ArrowLeft size={16} className="mr-2" />
           Back to Dashboard
         </button>
 
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Deposit Money</h2>
+        {isLoading ? (
+          <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto flex flex-col items-center justify-center min-h-[300px]">
+            <Loader2 />
+            <p className="mt-4 text-gray-600 text-sm">Processing your deposit request...</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Deposit Money</h2>
 
-          <form onSubmit={handleSubmit}>
+            {/* Display the user email (non-editable) */}
             <div className="mb-4">
-              <label htmlFor="recipient" className="block text-sm font-medium text-gray-700 mb-1">
-                Recipient's Email
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Your Account
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+                  <User className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  type="email"
-                  id="recipient"
-                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
-                  placeholder="email@example.com"
-                  value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
+                  type="text"
+                  className="pl-10 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm text-gray-600 sm:text-sm border p-2 cursor-not-allowed"
+                  value={userEmail}
+                  disabled
                 />
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Funds will be deposited to this account
+              </p>
             </div>
 
-            <div className="mb-6">
-              <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-                Amount
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <p className="text-gray-400" ><b>MK</b></p>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-6">
+                <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+                  Amount
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <p className="text-gray-400"><b>MK</b></p>
+                  </div>
+                  <input
+                    type="number"
+                    id="amount"
+                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    min="0.01"
+                    step="0.01"
+                  />
                 </div>
-                <input
-                  type="number"
-                  id="amount"
-                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  min="0.01"
-                  step="0.01"
-                />
               </div>
-            </div>
 
-            {error && (
-              <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
-                {error}
-              </div>
-            )}
+              {error && (
+                <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
 
-            {success && (
-              <div className="mb-4 p-2 bg-green-50 text-green-500 rounded-md text-sm">
-                {success}
-              </div>
-            )}
+              {success && (
+                <div className="mb-4 p-2 bg-green-50 text-green-500 rounded-md text-sm">
+                  {success}
+                </div>
+              )}
 
-            <button
-              type="submit"
-              className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
-            >
-              Deposit Money
-            </button>
-          </form>
-        </div>
+              <button
+                type="submit"
+                className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : 'Deposit Money'}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

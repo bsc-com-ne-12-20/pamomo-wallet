@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import QRCode from 'react-qr-code'; // Import QRCode component
+import { ArrowLeft } from 'lucide-react'; // Import ArrowLeft from react-feather
 
 const Security: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -119,25 +120,11 @@ const Security: React.FC = () => {
       <div className="container mx-auto max-w-lg bg-white rounded-lg shadow-md p-6">
         {/* Back to Dashboard Button */}
         <button
-          onClick={() => navigate('/dashboard')}
-          className="mb-6 text-[#8928A4] hover:underline flex items-center"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 mr-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Back to Dashboard
-        </button>
+      onClick={() => navigate('/dashboard')}
+      className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium">
+        <ArrowLeft size={16} className="mr-2" />
+        Back to Dashboard
+      </button>
 
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Security Settings</h2>
 

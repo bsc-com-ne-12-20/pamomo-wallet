@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Hexagon, User, Lock, Mail, Phone } from 'lucide-react';
 import axios from 'axios';
-import Loader from '../components/loader'; // Import the loader component
 
 interface RegisterProps {
   onRegister: (username: string, email: string, phone: string, password: string) => boolean;
@@ -15,39 +14,46 @@ const Register: React.FC<RegisterProps> = ({ onRegister }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // Loader state
-  const [showPopup, setShowPopup] = useState(false); // Popup state
-  const [popupMessage, setPopupMessage] = useState(''); // Popup message
+  const [loading, setLoading] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState('');
   const navigate = useNavigate();
+
+  // Simple loader component that matches the website color
+  const SimpleLoader = () => (
+    <div className="flex justify-center items-center h-32">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[#8928A4]"></div>
+    </div>
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true); // Show loader
+    setLoading(true);
 
     if (!username || !email || !phone || !password || !confirmPassword) {
       setError('Please fill in all fields');
-      setLoading(false); // Hide loader
+      setLoading(false);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address');
-      setLoading(false); // Hide loader
+      setLoading(false);
       return;
     }
 
     const phoneRegex = /^\+?[\d\s-]{10,}$/;
     if (!phoneRegex.test(phone)) {
       setError('Please enter a valid phone number');
-      setLoading(false); // Hide loader
+      setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
-      setLoading(false); // Hide loader
+      setLoading(false);
       return;
     }
 
@@ -61,26 +67,26 @@ const Register: React.FC<RegisterProps> = ({ onRegister }) => {
 
       if (response.data.key) {
         setPopupMessage('Registration successful! You can now log in.');
-        setShowPopup(true); // Show success popup
+        setShowPopup(true);
         setTimeout(() => {
           localStorage.setItem('authToken', response.data.key);
           localStorage.setItem('username', username);
           localStorage.setItem('email', email);
-          onRegister(username, email, phone, password); // Call onRegister function
-          navigate('/login'); // Redirect to login
-        }, 3000); // Wait for 3 seconds before navigating
+          onRegister(username, email, phone, password);
+          navigate('/login');
+        }, 3000);
       }
     } catch (err: any) {
       if (err.response?.data) {
         const errors = Object.values(err.response.data).flat();
-        setPopupMessage(errors.join(' ')); // Show error in popup
+        setPopupMessage(errors.join(' '));
         setShowPopup(true);
       } else {
         setPopupMessage('Registration failed. Please try again.');
         setShowPopup(true);
       }
     } finally {
-      setTimeout(() => setLoading(false), 3000); // Hide loader after 3 seconds
+      setTimeout(() => setLoading(false), 3000);
     }
   };
 
@@ -100,9 +106,7 @@ const Register: React.FC<RegisterProps> = ({ onRegister }) => {
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center">
-            <Loader /> {/* Display the loader */}
-          </div>
+          <SimpleLoader />
         ) : (
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="rounded-md shadow-sm space-y-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -13,8 +13,24 @@ import VerifyTransaction from './pages/VerifyTransaction';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ProfilePage from './pages/Profilepage';
-import Security from './pages/Security'; // Import Security page
+import Security from './pages/Security';
 import OtpVerification from './pages/OtpVerification';
+import BottomNavbar from './components/BottomNavbar';
+import Subscription from './pages/Subscription';
+import TransferComplete from './pages/TransferComplete';
+
+// Layout wrapper component to handle proper padding
+const MainLayout: React.FC<{ children: React.ReactNode, isAuthenticated: boolean }> = ({ children, isAuthenticated }) => {
+  const location = useLocation();
+  const hideNavbarPages = ['/login', '/register', '/forgot-password', '/reset-password', '/otp-verification'];
+  const shouldShowNavbar = isAuthenticated && !hideNavbarPages.includes(location.pathname);
+  
+  return (
+    <div className={`min-h-screen bg-white ${shouldShowNavbar ? 'pb-20 pt-16' : ''}`}>
+      {children}
+    </div>
+  );
+};
 
 const App = () => {
   // Update isAuthenticated to check for both authToken and isAuthenticated flag
@@ -233,116 +249,138 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <Routes>
-        <Route
-          path="/login"
-          element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />}
-        />
+    <MainLayout isAuthenticated={isAuthenticated}>
+      <div className="w-full h-full overflow-y-auto">
+        <Routes>
+          <Route
+            path="/login"
+            element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />}
+          />
 
-        <Route path="/register" element={<Register onRegister={handleRegister} />} />
+          <Route path="/register" element={<Register onRegister={handleRegister} />} />
 
-        <Route
-          path="/verify"
-          element={<VerifyIdentity username={username} onLogout={handleLogout} onVerify={handleVerify} />}
-        />
+          <Route
+            path="/verify"
+            element={<VerifyIdentity username={username} onLogout={handleLogout} onVerify={handleVerify} />}
+          />
 
-        <Route
-          path="/dashboard"
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <Dashboard username={username} balance={balance} onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+          path="/subscription"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <Dashboard username={username} balance={balance} onLogout={handleLogout} />
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <Subscription username={username} onLogout={handleLogout} />
             </ProtectedRoute>
-          }
-        />
+            }
+          />  
 
-        <Route
-          path="/send"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <SendMoney
-                username={username}
-                balance={balance}
-                isVerified={isVerified} // Pass isVerified
-                onSend={handleSendMoney}
-                onLogout={handleLogout}
-              />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/send"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <SendMoney
+                  username={username}
+                  balance={balance}
+                  isVerified={isVerified}
+                  onSend={handleSendMoney}
+                  onLogout={handleLogout}
+                />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/withdraw"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <WithdrawMoney
-                username={username}
-                balance={balance}
-                isVerified={isVerified} // Pass isVerified
-                onWithdraw={handleWithdraw}
-                onLogout={handleLogout}
-              />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/withdraw"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <WithdrawMoney
+                  username={username}
+                  balance={balance}
+                  isVerified={isVerified}
+                  onWithdraw={handleWithdraw}
+                  onLogout={handleLogout}
+                />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/deposit"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <DepositMoney username={username} onLogout={handleLogout} />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/deposit"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <DepositMoney username={username} onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/verifytrans"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <VerifyTransaction username={username} onLogout={handleLogout} />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/verifytrans"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <VerifyTransaction username={username} onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <TransactionHistory username={username} transactions={transactions} onLogout={handleLogout} />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <TransactionHistory username={username} transactions={transactions} onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <ProfilePage username={username} transactions={transactions} onLogout={handleLogout} />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <ProfilePage username={username} transactions={transactions} onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/security"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <Security />
-            </ProtectedRoute>
-          }
-        />
-        
-        <Route 
-          path="/otp-verification"
-          element={
-            <OtpVerification handleOtpSuccess={handleOtpSuccess} />
-          } 
-        />
+          <Route
+            path="/security"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <Security />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route 
+            path="/otp-verification"
+            element={
+              <OtpVerification handleOtpSuccess={handleOtpSuccess} />
+            } 
+          />
 
-        <Route path="*" element={<Navigate to="/login" />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-      </Routes>
-    </div>
+          <Route 
+            path="/transfer/complete" 
+            element={
+              <ProtectedRoute isVerified={isVerified}>
+                <TransferComplete username={username} onLogout={handleLogout} />
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route path="*" element={<Navigate to="/login" />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+        </Routes>
+      </div>
+      
+      {/* Add the BottomNavbar component */}
+      {/* <BottomNavbar isAuthenticated={isAuthenticated} /> */}
+    </MainLayout>
   );
 };
 

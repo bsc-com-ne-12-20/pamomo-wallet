@@ -124,7 +124,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
       );
   
       // Get the most recent 5 transactions
-      setTransactions(sortedTransactions.slice(0, 5));
+      setTransactions(sortedTransactions.slice(0, 3));
     } catch (err) {
       console.error(err);
       setTransactions([]);
@@ -339,7 +339,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
         {/* Recent Transactions */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Recent Transactions</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Recent Transaction</h2>
           {transactions.length > 0 ? (
             <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
               <ul className="divide-y divide-gray-200">

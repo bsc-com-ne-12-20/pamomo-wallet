@@ -29,13 +29,13 @@ const VerifyIdentity: React.FC<VerifyIdentityProps> = ({ username, onLogout, onV
       <Navbar username={username} onLogout={onLogout} />
       
       <div className="container mx-auto px-4 py-6 sm:py-8">
-        <button 
-          onClick={() => navigate('/dashboard')} 
-          className="flex items-center text-[#8928A4] mb-4 sm:mb-6 hover:underline"
-        >
-          <ArrowLeft size={16} className="mr-1" />
-          Back to Dashboard
-        </button>
+      <button
+  onClick={() => navigate('/dashboard')}
+  className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium"
+>
+  <ArrowLeft size={16} className="mr-2" />
+  Back to Dashboard
+</button>
         
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 md:p-8">

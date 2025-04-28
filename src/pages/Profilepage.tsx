@@ -363,11 +363,10 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
       <Navbar username={username} onLogout={onLogout} />
       <div className="container mx-auto px-4 py-10">
         <button
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center text-purple-600 mb-6 hover:text-purple-800 focus:outline-none focus:underline transition-colors"
-        >
-          <ArrowLeft size={16} className="mr-1" />
-          Back to Dashboard
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium">
+                <ArrowLeft size={16} className="mr-2" />
+                Back to Dashboard
         </button>
 
         {loading ? renderLoadingState() : 

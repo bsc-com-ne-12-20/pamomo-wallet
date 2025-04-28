@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Hexagon, User, Lock } from 'lucide-react';
 import axios from 'axios';
-import Loader from '../components/loader'; // Import the Loader component
 
 interface LoginProps {
   onLogin: (email: string, password: string) => boolean;
@@ -12,7 +11,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // State to track loading
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,13 +21,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       return;
     }
 
-    setIsLoading(true); // Show loader
-    setError(''); // Clear previous errors
+    setIsLoading(true);
+    setError('');
 
     try {
-
-      //old endpoint https://mtima.onrender.com/api/v1/dj-rest-auth/login/
-
       // Use this endpoint for login https://mtima.onrender.com/api/v1/accounts/login/ with 2FA 
       const response = await axios.post('https://mtima.onrender.com/api/v1/accounts/login/', {
           email,
@@ -51,7 +47,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (pre2faUserId) {
           localStorage.setItem('email', email);
           localStorage.setItem('pre_2fa_user_id', pre2faUserId);
-          localStorage.setItem('is2FAEnabled', 'true'); // Store 2FA status
+          localStorage.setItem('is2FAEnabled', 'true');
           navigate('/otp-verification', {
             state: {
               email,
@@ -85,14 +81,21 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         'Invalid credentials. Please try again.';
       setError(detail);
     } finally {
-      setIsLoading(false); // Hide loader
+      setIsLoading(false);
     }
   } 
 
+  // Simple loader component that matches the website color
+  const SimpleLoader = () => (
+    <div className="flex justify-center items-center h-32">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[#8928A4]"></div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      {isLoading ? ( // Conditionally render the loader
-        <Loader />
+      {isLoading ? (
+        <SimpleLoader />
       ) : (
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">

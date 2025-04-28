@@ -15,7 +15,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
   };
 
   return (
-    <nav className="bg-[#8928A4] text-white p-4 relative z-30">
+    <nav className="fixed top-0 left-0 w-full bg-[#8928A4] text-white p-4 z-30">
       <div className="container mx-auto flex justify-between items-center">
         <Link to="/dashboard" className="flex items-center space-x-2">
           <Wallet size={24} />

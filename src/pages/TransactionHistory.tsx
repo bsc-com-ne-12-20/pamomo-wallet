@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { ArrowLeft, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, ZoomIn, ZoomOut, TrendingUp, AlertTriangle, PieChart } from 'lucide-react';
 import axios from 'axios';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  Pie, PieChart, Cell, ReferenceArea
+  Pie, Cell, ReferenceArea
 } from 'recharts';
+// Import transaction limits and fee percentages from constants
+import { TRANSACTION_LIMITS, WITHDRAWAL_FEE_PERCENTAGE, TRANSFER_FEE_PERCENTAGE } from '../utils/constants';
 
 interface Transaction {
   id: string;
@@ -17,6 +19,15 @@ interface Transaction {
   fee?: number;
   time_stamp: string;
   display_time?: string;
+}
+
+interface SubscriptionPlan {
+  plan: string;
+  period: string;
+  status: string;
+  expiry_date: string;
+  auto_renew: boolean;
+  current_balance?: number;
 }
 
 interface TransactionHistoryProps {
@@ -32,6 +43,8 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
   const [graphType, setGraphType] = useState<'transaction' | 'week' | 'month'>('transaction');
   const navigate = useNavigate();
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [subscription, setSubscription] = useState<SubscriptionPlan | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   
   // For zoom functionality
   const [zoomLeft, setZoomLeft] = useState<number | null>(null);
@@ -66,6 +79,50 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
   const formatChartDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Fetch user's subscription details
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (!email) return;
+      
+      try {
+        setSubscriptionLoading(true);
+        const response = await axios.post('https://mtima.onrender.com/api/v1/subscriptions/check-subscription/', {
+          email
+        });
+        
+        if (response.status === 200) {
+          setSubscription(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch subscription details:', error);
+        // Default to free plan if fetch fails
+        setSubscription({
+          plan: 'FREE',
+          period: 'LIFETIME',
+          status: 'ACTIVE',
+          expiry_date: 'NEVER',
+          auto_renew: false
+        });
+      } finally {
+        setSubscriptionLoading(false);
+      }
+    };
+    
+    fetchSubscription();
+  }, [email]);
+
+  // Check if analytics features are available based on subscription
+  const hasAnalyticsAccess = () => {
+    if (!subscription) return false;
+    return subscription.plan === 'BASIC' || subscription.plan === 'PREMIUM';
+  };
+  
+  // Check if advanced analytics are available
+  const hasAdvancedAnalytics = () => {
+    if (!subscription) return false;
+    return subscription.plan === 'PREMIUM';
   };
 
   useEffect(() => {
@@ -152,8 +209,42 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
   };
 
   const loadMoreTransactions = () => {
-    const nextVisibleCount = visibleTransactions.length + 5;
-    setVisibleTransactions(transactions.slice(0, nextVisibleCount));
+    // Get the current number of transactions shown
+    const currentCount = visibleTransactions.length;
+    
+    // Define subscription-based limits using environment variables
+    const freeLimit = 5;
+    const basicLimit = 10;
+    
+    // Check if user has reached their plan's limit
+    if (subscription?.plan === 'FREE' && currentCount >= freeLimit) {
+      // Already at the limit for FREE plan
+      return;
+    }
+    
+    if (subscription?.plan === 'BASIC' && currentCount >= basicLimit) {
+      // Already at the limit for BASIC plan
+      return;
+    }
+    
+    // Calculate how many more transactions to show
+    const batchSize = 5;
+    let nextCount;
+    
+    // Apply plan-specific limits
+    if (subscription?.plan === 'FREE') {
+      // For FREE plan, don't exceed freeLimit
+      nextCount = Math.min(currentCount + batchSize, freeLimit);
+    } else if (subscription?.plan === 'BASIC') {
+      // For BASIC plan, don't exceed basicLimit
+      nextCount = Math.min(currentCount + batchSize, basicLimit);
+    } else {
+      // For PREMIUM, no limit
+      nextCount = currentCount + batchSize;
+    }
+    
+    // Update the visible transactions
+    setVisibleTransactions(transactions.slice(0, nextCount));
   };
 
   const formatMonthYear = (dateString: string) => {
@@ -385,18 +476,71 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
     return { width: 300, height: 300 };
   };
 
+  // Function to check if a transaction exceeds the user's subscription limit
+  const checkSubscriptionLimit = (transaction: Transaction) => {
+    if (!subscription) return false;
+    
+    // Only check for outgoing transactions (withdrawals and transfers where the user is the sender)
+    if (transaction.type === 'withdrawal' || (transaction.type === 'transfer' && transaction.sender === email)) {
+      // Use transaction limits from constants
+      if (subscription.plan === 'FREE' && transaction.amount > TRANSACTION_LIMITS.FREE) {
+        return true;
+      } else if (subscription.plan === 'BASIC' && transaction.amount > TRANSACTION_LIMITS.BASIC) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar username={username} onLogout={onLogout} />
 
       <div className="container mx-auto px-4 py-8">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center text-[#8928A4] mb-6 hover:underline"
-        >
-          <ArrowLeft size={16} className="mr-1" />
-          Back to Dashboard
-        </button>
+         <button
+                  onClick={() => navigate('/dashboard')}
+                  className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium">
+                  <ArrowLeft size={16} className="mr-2" />
+                  Back to Dashboard
+          </button>
+
+        {/* Subscription Plan Card - only show for FREE and BASIC plans */}
+        {!subscriptionLoading && subscription && subscription.plan !== 'PREMIUM' && (
+          <div className="bg-white rounded-lg shadow-sm p-4 mb-6 border-l-4 border-[#8928A4]">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+              <div>
+                <p className="text-sm text-gray-600">Current Subscription</p>
+                <p className="font-medium text-[#8928A4]">{subscription.plan} Plan</p>
+              </div>
+              
+              <div className="mt-2 sm:mt-0">
+                {subscription.plan === 'FREE' && (
+                  <div className="flex items-center">
+                    <AlertTriangle size={16} className="text-yellow-500 mr-2" />
+                    <span className="text-sm text-yellow-700">
+                      Limited to MWK{TRANSACTION_LIMITS.FREE.toLocaleString()} per transaction
+                    </span>
+                  </div>
+                )}
+                {subscription.plan === 'BASIC' && (
+                  <div className="flex items-center">
+                    <AlertTriangle size={16} className="text-yellow-500 mr-2" />
+                    <span className="text-sm text-yellow-700">
+                      Limited to MWK{TRANSACTION_LIMITS.BASIC.toLocaleString()} per transaction
+                    </span>
+                  </div>
+                )}
+                
+                <button
+                  onClick={() => navigate('/subscription')}
+                  className="text-[#8928A4] text-sm hover:underline mt-1"
+                >
+                  Upgrade subscription
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
           <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-6">Transaction History</h2>
@@ -421,11 +565,23 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
               <div className="block md:hidden">
                 <div className="space-y-4">
                   {visibleTransactions.map((transaction) => (
-                    <div key={transaction.id} className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                    <div key={transaction.id} 
+                      className={`
+                        bg-gray-50 rounded-lg p-4 shadow-sm
+                        ${checkSubscriptionLimit(transaction) ? 'border-l-4 border-yellow-400' : ''}
+                      `}
+                    >
                       <div className="flex justify-between mb-2">
                         <span className="text-sm font-medium text-gray-900 capitalize">{transaction.type}</span>
-                        <span className="text-sm font-bold">
+                        <span className={`text-sm font-bold ${
+                          checkSubscriptionLimit(transaction) ? 'text-yellow-600' : ''
+                        }`}>
                           Mk{transaction.amount.toFixed(2)}
+                          {checkSubscriptionLimit(transaction) && (
+                            <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                              Limit Exceeded
+                            </span>
+                          )}
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 mb-2">
@@ -435,7 +591,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                         {transaction.type === 'transfer'
                           ? `From: ${transaction.sender} To: ${transaction.receiver}`
                           : transaction.type === 'withdrawal'
-                          ? `Fee: Mk${transaction.fee?.toFixed(2)}`
+                          ? `Fee: Mk${transaction.fee?.toFixed(2)} (${(WITHDRAWAL_FEE_PERCENTAGE * 100).toFixed(0)}%)`
                           : 'Deposit'}
                       </div>
                     </div>
@@ -464,7 +620,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {visibleTransactions.map((transaction) => (
-                      <tr key={transaction.id}>
+                      <tr key={transaction.id} className={checkSubscriptionLimit(transaction) ? 'bg-yellow-50' : ''}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {transaction.display_time}
                         </td>
@@ -475,11 +631,22 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
                           {transaction.type === 'transfer'
                             ? `From: ${transaction.sender} To: ${transaction.receiver}`
                             : transaction.type === 'withdrawal'
-                            ? `Fee: Mk${transaction.fee?.toFixed(2)}`
+                            ? `Fee: Mk${transaction.fee?.toFixed(2)} (${(WITHDRAWAL_FEE_PERCENTAGE * 100).toFixed(0)}%)`
                             : 'Deposit'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          Mk{transaction.amount.toFixed(2)}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <span className={`text-sm font-medium ${
+                              checkSubscriptionLimit(transaction) ? 'text-yellow-600' : ''
+                            }`}>
+                              Mk{transaction.amount.toFixed(2)}
+                            </span>
+                            {checkSubscriptionLimit(transaction) && (
+                              <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                                Limit Exceeded
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -489,195 +656,266 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ username, onLog
 
               {visibleTransactions.length < transactions.length && (
                 <div className="text-center mb-8">
-                  <button
-                    onClick={loadMoreTransactions}
-                    className="px-6 py-2 bg-[#8928A4] text-white rounded-md hover:bg-[#6a1f7a] transition-colors"
-                  >
-                    Load More
-                  </button>
+                  {subscription?.plan === 'FREE' && visibleTransactions.length >= 5 ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600">You've reached the transaction history limit for the Free plan</p>
+                      <button
+                        onClick={() => navigate('/subscription')}
+                        className="px-6 py-2 bg-[#8928A4] text-white rounded-md hover:bg-[#6a1f7a] transition-colors"
+                      >
+                        Upgrade to Basic or Premium for more history
+                      </button>
+                    </div>
+                  ) : subscription?.plan === 'BASIC' && visibleTransactions.length >= 10 ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600">You've reached the transaction history limit for the Basic plan</p>
+                      <button
+                        onClick={() => navigate('/subscription')}
+                        className="px-6 py-2 bg-[#8928A4] text-white rounded-md hover:bg-[#6a1f7a] transition-colors"
+                      >
+                        Upgrade to Premium for unlimited history
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={loadMoreTransactions}
+                      className="px-6 py-2 bg-[#8928A4] text-white rounded-md hover:bg-[#6a1f7a] transition-colors"
+                    >
+                      Load More
+                    </button>
+                  )}
                 </div>
               )}
 
-              <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mt-8">
-                <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Transaction Trends</h3>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <button
-                    onClick={() => {
-                      setGraphType('transaction');
-                      resetZoom();
-                    }}
-                    className={`px-3 py-1 text-xs md:text-sm rounded-md ${
-                      graphType === 'transaction' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
-                    }`}
-                  >
-                    Per Transaction
-                  </button>
-                  <button
-                    onClick={() => {
-                      setGraphType('week');
-                      resetZoom();
-                    }}
-                    className={`px-3 py-1 text-xs md:text-sm rounded-md ${
-                      graphType === 'week' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
-                    }`}
-                  >
-                    Per Week
-                  </button>
-                  <button
-                    onClick={() => {
-                      setGraphType('month');
-                      resetZoom();
-                    }}
-                    className={`px-3 py-1 text-xs md:text-sm rounded-md ${
-                      graphType === 'month' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
-                    }`}
-                  >
-                    Per Month
-                  </button>
-                </div>
-                
-                <div className="flex justify-end mb-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={resetZoom}
-                      className="flex items-center text-xs md:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded"
-                      disabled={chartData.length === originalData.length}
-                    >
-                      <ZoomOut size={14} className="mr-1" />
-                      Reset Zoom
-                    </button>
-                    <div className="text-xs text-gray-500">
-                      {chartData.length !== originalData.length && 
-                        `Showing ${chartData.length} of ${originalData.length} data points`
-                      }
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="h-60 md:h-80" ref={chartContainerRef}>
-                  {chartData.length > 0 && (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart
-                        data={chartData}
-                        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
+              {/* Analytics section - only show for BASIC and PREMIUM plans */}
+              {hasAnalyticsAccess() ? (
+                <>
+                  <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mt-8">
+                    <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Transaction Trends</h3>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <button
+                        onClick={() => {
+                          setGraphType('transaction');
+                          resetZoom();
+                        }}
+                        className={`px-3 py-1 text-xs md:text-sm rounded-md ${
+                          graphType === 'transaction' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
+                        }`}
                       >
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                        <XAxis 
-                          dataKey="name" 
-                          tick={{ fontSize: 10 }} 
-                          angle={-45} 
-                          textAnchor="end"
-                          height={60}
-                          allowDataOverflow
-                        />
-                        <YAxis 
-                          tick={{ fontSize: 10 }} 
-                          domain={yDomain || [0, 'auto']}
-                          allowDataOverflow
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend wrapperStyle={{ fontSize: '10px' }} />
-                        <Area 
-                          type="monotone" 
-                          dataKey="credit" 
-                          name="Credit (CR)"
-                          stroke={COLORS.credit.line} 
-                          fill={COLORS.credit.fill} 
-                          stackId="1"
-                          activeDot={{ r: 5 }}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="debit" 
-                          name="Debit (DR)"
-                          stroke={COLORS.debit.line} 
-                          fill={COLORS.debit.fill} 
-                          stackId="2"
-                          activeDot={{ r: 5 }}
-                        />
-                        
-                        {/* Reference area for zoom selection */}
-                        {refAreaLeft && refAreaRight && (
-                          <ReferenceArea 
-                            x1={refAreaLeft} 
-                            x2={refAreaRight} 
-                            strokeOpacity={0.3}
-                            fill="#8928A4" 
-                            fillOpacity={0.1} 
-                          />
-                        )}
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-                
-                <div className="mt-2 text-xs text-gray-500 text-center">
-                  <p>Tip: Click and drag on the chart to zoom into a specific range</p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mt-8">
-                <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Transaction Breakdown</h3>
-                
-                {/* Fully responsive pie chart container */}
-                <div className="w-full flex justify-center items-center">
-                  <div className="w-full aspect-square max-w-xs sm:max-w-sm md:max-w-md">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={renderCustomizedLabel}
-                          outerRadius="80%"
-                          fill="#8884d8"
-                          dataKey="value"
+                        Per Transaction
+                      </button>
+                      <button
+                        onClick={() => {
+                          setGraphType('week');
+                          resetZoom();
+                        }}
+                        className={`px-3 py-1 text-xs md:text-sm rounded-md ${
+                          graphType === 'week' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
+                        }`}
+                      >
+                        Per Week
+                      </button>
+                      <button
+                        onClick={() => {
+                          setGraphType('month');
+                          resetZoom();
+                        }}
+                        className={`px-3 py-1 text-xs md:text-sm rounded-md ${
+                          graphType === 'month' ? 'bg-[#8928A4] text-white' : 'bg-gray-200 text-gray-800'
+                        }`}
+                      >
+                        Per Month
+                      </button>
+                    </div>
+                    
+                    <div className="flex justify-end mb-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={resetZoom}
+                          className="flex items-center text-xs md:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded"
+                          disabled={chartData.length === originalData.length}
                         >
-                          {pieData.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={PIE_COLORS[index % PIE_COLORS.length]} 
+                          <ZoomOut size={14} className="mr-1" />
+                          Reset Zoom
+                        </button>
+                        <div className="text-xs text-gray-500">
+                          {chartData.length !== originalData.length && 
+                            `Showing ${chartData.length} of ${originalData.length} data points`
+                          }
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="h-60 md:h-80" ref={chartContainerRef}>
+                      {chartData.length > 0 && (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={chartData}
+                            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                            <XAxis 
+                              dataKey="name" 
+                              tick={{ fontSize: 10 }} 
+                              angle={-45} 
+                              textAnchor="end"
+                              height={60}
+                              allowDataOverflow
                             />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<PieCustomTooltip />} />
-                      </PieChart>
-                    </ResponsiveContainer>
+                            <YAxis 
+                              tick={{ fontSize: 10 }} 
+                              domain={yDomain || [0, 'auto']}
+                              allowDataOverflow
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend wrapperStyle={{ fontSize: '10px' }} />
+                            <Area 
+                              type="monotone" 
+                              dataKey="credit" 
+                              name="Credit (CR)"
+                              stroke={COLORS.credit.line} 
+                              fill={COLORS.credit.fill} 
+                              stackId="1"
+                              activeDot={{ r: 5 }}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="debit" 
+                              name="Debit (DR)"
+                              stroke={COLORS.debit.line} 
+                              fill={COLORS.debit.fill} 
+                              stackId="2"
+                              activeDot={{ r: 5 }}
+                            />
+                            
+                            {/* Reference area for zoom selection */}
+                            {refAreaLeft && refAreaRight && (
+                              <ReferenceArea 
+                                x1={refAreaLeft} 
+                                x2={refAreaRight} 
+                                strokeOpacity={0.3}
+                                fill="#8928A4" 
+                                fillOpacity={0.1} 
+                              />
+                            )}
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                    
+                    <div className="mt-2 text-xs text-gray-500 text-center">
+                      <p>Tip: Click and drag on the chart to zoom into a specific range</p>
+                    </div>
                   </div>
-                </div>
-                
-                {/* Summary boxes for credit/debit - more responsive grid */}
-                <div className="mt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-blue-50 p-3 rounded-md">
-                      <p className="text-xs text-gray-500">Total Credit</p>
-                      <p className="text-sm md:text-base font-bold text-blue-600">Mk{totalCredit.toFixed(2)}</p>
+
+                  {/* Only show pie chart for PREMIUM plans */}
+                  {hasAdvancedAnalytics() && (
+                    <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mt-8">
+                      <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Transaction Breakdown</h3>
+                      
+                      {/* Fully responsive pie chart container */}
+                      <div className="w-full flex justify-center items-center">
+                        <div className="w-full aspect-square max-w-xs sm:max-w-sm md:max-w-md">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={pieData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={renderCustomizedLabel}
+                                outerRadius="80%"
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {pieData.map((entry, index) => (
+                                  <Cell 
+                                    key={`cell-${index}`} 
+                                    fill={PIE_COLORS[index % PIE_COLORS.length]} 
+                                  />
+                                ))}
+                              </Pie>
+                              <Tooltip content={<PieCustomTooltip />} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                      
+                      {/* Summary boxes for credit/debit - more responsive grid */}
+                      <div className="mt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="bg-blue-50 p-3 rounded-md">
+                            <p className="text-xs text-gray-500">Total Credit</p>
+                            <p className="text-sm md:text-base font-bold text-blue-600">Mk{totalCredit.toFixed(2)}</p>
+                          </div>
+                          <div className="bg-red-50 p-3 rounded-md">
+                            <p className="text-xs text-gray-500">Total Debit</p>
+                            <p className="text-sm md:text-base font-bold text-red-600">Mk{totalDebit.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Legend for pie chart - helpful on small screens */}
+                      <div className="mt-4">
+                        <div className="flex flex-wrap justify-center gap-6">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 rounded-full bg-blue-400 mr-2"></div>
+                            <span className="text-xs text-gray-600">Credit (CR)</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 rounded-full bg-red-400 mr-2"></div>
+                            <span className="text-xs text-gray-600">Debit (DR)</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-red-50 p-3 rounded-md">
-                      <p className="text-xs text-gray-500">Total Debit</p>
-                      <p className="text-sm md:text-base font-bold text-red-600">Mk{totalDebit.toFixed(2)}</p>
+                  )}
+                  
+                  {/* For BASIC subscription - show upgrade prompt for pie chart */}
+                  {subscription?.plan === 'BASIC' && (
+                    <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mt-8 border border-[#8928A4] border-opacity-20">
+                      <div className="flex items-center">
+                        <div className="bg-[#f9f0fc] p-2 rounded-full mr-3">
+                          <PieChart size={24} className="text-[#8928A4]" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-800">Unlock Advanced Analytics</h3>
+                          <p className="text-sm text-gray-600">
+                            Upgrade to Premium for detailed transaction breakdown charts and advanced analytics features.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => navigate('/subscription')}
+                        className="mt-4 px-6 py-2 bg-[#8928A4] text-white rounded-md hover:bg-[#6a1f7a] transition-colors"
+                      >
+                        Upgrade to Premium
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-[#f9f0fc] rounded-lg shadow-md p-4 md:p-6 mt-8 border border-[#8928A4] border-opacity-30">
+                  <div className="flex items-center">
+                    <TrendingUp size={24} className="text-[#8928A4] mr-3" />
+                    <div>
+                      <h3 className="text-lg md:text-xl font-bold text-gray-800">Unlock Transaction Insights</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Upgrade to our Basic or Premium plan to access detailed transaction analytics and insights.
+                      </p>
                     </div>
                   </div>
+                  <button
+                    onClick={() => navigate('/subscription')}
+                    className="mt-4 px-6 py-2 bg-[#8928A4] text-white rounded-md hover:bg-[#6a1f7a] transition-colors"
+                  >
+                    View Subscription Plans
+                  </button>
                 </div>
-                
-                {/* Legend for pie chart - helpful on small screens */}
-                <div className="mt-4">
-                  <div className="flex flex-wrap justify-center gap-6">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-blue-400 mr-2"></div>
-                      <span className="text-xs text-gray-600">Credit (CR)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-red-400 mr-2"></div>
-                      <span className="text-xs text-gray-600">Debit (DR)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </>
           )}
         </div>

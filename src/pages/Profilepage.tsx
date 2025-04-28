@@ -53,7 +53,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
         throw new Error('Authentication required: Please log in to view your profile');
       }
 
-      const response = await fetch(`${API_BASE_URL}/callback/user-info/`, {
+      const response = await fetch('https://mtima.onrender.com/callback/user-info/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,6 +62,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
       });
 
       if (!response.ok) {
+        console.log(response);
         if (response.status === 403) {
           setError({
             message: 'Verification Required: Your account needs to be verified to access this feature',
@@ -69,16 +70,11 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
           });
           return;
         } else if (response.status === 404) {
-          // For demo purposes, use mock data if API returns 404
-          setUserData({
-            name: username || 'Demo User',
-            email: email,
-            phone_number: '+265 999 888 777',
-            gender: 'Not Specified',
-            created_at: new Date().toISOString(),
-            picture: 'https://avatar.iran.liara.run/public/13'
+          setError({
+            message: 'Please complete verification to see your profile!',
+            needsVerification: true,
+            isNotFound: true,
           });
-          setError({ message: '' });
           return;
         }
         throw new Error(`Service unavailable (Status: ${response.status})`);
@@ -97,7 +93,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
           phone_number: '+265 999 888 777',
           gender: 'Not Specified',
           created_at: new Date().toISOString(),
-          picture: 'https://via.placeholder.com/150'
+          picture: 'https://avatar.iran.liara.run/public/50'
         });
         setError({ message: '' });
         
@@ -118,7 +114,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/subscriptions/check-subscription/`, {
+      const response = await fetch('https://mtima.onrender.com/api/v1/subscriptions/check-subscription/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -514,13 +510,13 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
               <div className="relative mb-4">
                 <div className="rounded-full w-32 h-32 overflow-hidden border-4 border-white shadow-lg">
                   <img
-                    src={userData?.picture || 'https://via.placeholder.com/150'}
+                    src={userData?.picture || 'https://avatar.iran.liara.run/public/50'}
                     alt={userData?.name || 'User'}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.onerror = null;
-                      target.src = 'https://via.placeholder.com/150';
+                      target.src = 'https://avatar.iran.liara.run/public/50';
                     }}
                   />
                 </div>

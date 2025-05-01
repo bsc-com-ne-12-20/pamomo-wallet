@@ -55,7 +55,13 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pamomo_wallet');
   const [showPaymentMethodSelection, setShowPaymentMethodSelection] = useState(true);
+  const [makeRecurring, setMakeRecurring] = useState(false);
+  const [frequency, setFrequency] = useState('DAILY');
+  const [startDate, setStartDate] = useState('');
+  const [description, setDescription] = useState('');
   const navigate = useNavigate();
+
+  const minDate = new Date().toISOString().split('T')[0];
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -500,6 +506,72 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                     ? 'Send from Pamomo Wallet' 
                     : 'Continue to Payment'}
                 />
+
+                {subscription && subscription.plan !== 'FREE' && (
+                  <div className="flex items-center mt-4 mb-2">
+                    <input
+                      type="checkbox"
+                      id="makeRecurring"
+                      className="rounded text-[#8928A4] focus:ring-[#8928A4] h-4 w-4"
+                      checked={makeRecurring}
+                      onChange={(e) => setMakeRecurring(e.target.checked)}
+                    />
+                    <label htmlFor="makeRecurring" className="ml-2 text-sm text-gray-700">
+                      Set up as recurring auto payment
+                    </label>
+                  </div>
+                )}
+
+                {makeRecurring && (
+                  <div className="bg-gray-50 p-3 rounded-md mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="frequency" className="block text-xs font-medium text-gray-700 mb-1">
+                          Frequency
+                        </label>
+                        <select
+                          id="frequency"
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs p-1.5 border"
+                          value={frequency}
+                          onChange={(e) => setFrequency(e.target.value as any)}
+                        >
+                          <option value="DAILY">Daily</option>
+                          <option value="WEEKLY">Weekly</option>
+                          <option value="BIWEEKLY">Every 2 Weeks</option>
+                          <option value="MONTHLY">Monthly</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="startDate" className="block text-xs font-medium text-gray-700 mb-1">
+                          Start Date
+                        </label>
+                        <input
+                          type="date"
+                          id="startDate"
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs p-1.5 border"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          min={minDate}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3">
+                      <label htmlFor="description" className="block text-xs font-medium text-gray-700 mb-1">
+                        Description (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        id="description"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs p-1.5 border"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="e.g. Monthly rent payment"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

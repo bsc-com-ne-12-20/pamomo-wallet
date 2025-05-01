@@ -18,6 +18,7 @@ import OtpVerification from './pages/OtpVerification';
 import BottomNavbar from './components/BottomNavbar';
 import Subscription from './pages/Subscription';
 import TransferComplete from './pages/TransferComplete';
+import AutoPayments from './pages/AutoPayments';
 
 // Layout wrapper component to handle proper padding
 const MainLayout: React.FC<{ children: React.ReactNode, isAuthenticated: boolean }> = ({ children, isAuthenticated }) => {
@@ -371,6 +372,12 @@ const App = () => {
               </ProtectedRoute>
             } 
           />
+
+          <Route path="/auto-payments" element={
+            <ProtectedRoute isAuthenticated={isAuthenticated} isVerified={isVerified}>
+              <AutoPayments username={username} onLogout={handleLogout} />
+            </ProtectedRoute>
+          } />
 
           <Route path="*" element={<Navigate to="/login" />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

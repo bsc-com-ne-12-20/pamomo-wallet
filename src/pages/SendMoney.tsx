@@ -248,6 +248,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       return;
     }
 
+    // Validate amount
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
@@ -255,42 +256,162 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       return;
     }
 
+    // Check transaction limits
     if (!checkTransactionLimit(amountNum)) {
       setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
       setTimeout(() => setIsSending(false), 3000);
       return;
     }
 
+    // Check balance
     if (amountNum > (balance || 0)) {
       setError('Insufficient balance');
       setTimeout(() => setIsSending(false), 3000);
       return;
     }
 
-    try {
-      const senderEmail = localStorage.getItem('email');
-      const response = await axios.post(`${API_BASE_URL}/trsf/`, {
-        sender_email: senderEmail,
-        receiver_email: receiver,
-        amount: amountNum
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+    // Handle recurring payment setup if selected
+    if (makeRecurring) {
+      // Validate recurring payment fields
+      if (!startDate) {
+        setError('Please select a start date for recurring payments');
+        setTimeout(() => setIsSending(false), 3000);
+        return;
+      }
 
-      if (response.status === 201) {
+      if (subscription?.plan === 'FREE') {
+        setError('Recurring payments require Basic or Premium subscription');
+        setTimeout(() => setIsSending(false), 3000);
+        return;
+      }
+
+      try {
+        // First send the initial payment
+        const senderEmail = localStorage.getItem('email');
+        const transferResponse = await axios.post(`${API_BASE_URL}/trsf/`, {
+          sender_email: senderEmail,
+          receiver_email: receiver,
+          amount: amountNum
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (transferResponse.status !== 201) {
+          setError('Initial transaction failed. Please try again.');
+          setTimeout(() => setIsSending(false), 3000);
+          return;
+        }
+
+        // Then set up the auto payment
+        const autoPaymentResult = await createAutoPayment(receiver, amountNum, {
+          frequency,
+          startDate,
+          description
+        });
+
+        if (!autoPaymentResult.success) {
+          // If auto payment setup fails but the initial transfer succeeded
+          setError(`Initial payment sent, but failed to set up recurring payments: ${autoPaymentResult.error}`);
+          setTimeout(() => {
+            setIsSending(false);
+            setShowSuccessPopup(true); // Still show success for the initial payment
+          }, 3000);
+          return;
+        }
+
+        // Both succeeded
         setTimeout(() => {
           setIsSending(false);
           setShowSuccessPopup(true);
         }, 3000);
-      } else {
-        setError('Transaction failed. Please try again.');
+
+      } catch (error) {
+        console.error("Transaction error:", error);
+        setError('An error occurred while processing your transaction.');
         setTimeout(() => setIsSending(false), 3000);
       }
-    } catch (error) {
-      setError('An error occurred while processing your transaction.');
-      setTimeout(() => setIsSending(false), 3000);
+    } else {
+      // Regular one-time payment (existing functionality)
+      try {
+        const senderEmail = localStorage.getItem('email');
+        const response = await axios.post(`${API_BASE_URL}/trsf/`, {
+          sender_email: senderEmail,
+          receiver_email: receiver,
+          amount: amountNum
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (response.status === 201) {
+          setTimeout(() => {
+            setIsSending(false);
+            setShowSuccessPopup(true);
+          }, 3000);
+        } else {
+          setError('Transaction failed. Please try again.');
+          setTimeout(() => setIsSending(false), 3000);
+        }
+      } catch (error) {
+        setError('An error occurred while processing your transaction.');
+        setTimeout(() => setIsSending(false), 3000);
+      }
+    }
+  };
+
+  const createAutoPayment = async (recipientEmail: string, amountValue: number, recurringOptions: {
+    frequency: string;
+    startDate: string;
+    description: string;
+  }) => {
+    try {
+      const email = localStorage.getItem('email');
+      
+      const payload = {
+        user_email: email,
+        recipient_email: recipientEmail,
+        amount: amountValue,
+        frequency: recurringOptions.frequency,
+        start_date: recurringOptions.startDate,
+        next_payment_date: recurringOptions.startDate,
+        description: recurringOptions.description || `Auto payment to ${recipientEmail}`
+      };
+      
+      console.log('Creating auto payment with data:', payload);
+      
+      const response = await axios.post(`${API_BASE_URL}/autopayments/create/`, payload);
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (err: any) {
+      console.error('Auto payment creation failed:', err.response || err);
+      
+      let errorMessage = 'Failed to create auto payment';
+      if (err.response?.data) {
+        if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response.data.non_field_errors) {
+          errorMessage = err.response.data.non_field_errors.join(', ');
+        } else if (err.response.data.next_payment_date) {
+          errorMessage = `Next Payment Date: ${err.response.data.next_payment_date[0]}`;
+        } else if (err.response.data.amount) {
+          errorMessage = `Amount: ${err.response.data.amount[0]}`;
+        } else if (err.response.data.start_date) {
+          errorMessage = `Start date: ${err.response.data.start_date[0]}`;
+        }
+      }
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
     }
   };
 
@@ -599,6 +720,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
           receiver={receiver}
           receiverUsername={receiverUsername}
           onClose={handlePopupClose}
+          isRecurring={makeRecurring}
         />
       </div>
     </div>

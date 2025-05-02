@@ -24,6 +24,16 @@ interface AutoPayment {
   last_payment_status?: string;
 }
 
+interface PaymentHistoryItem {
+  id: string;
+  auto_payment_id: string;
+  recipient_email: string;
+  amount: number;
+  status: 'SUCCESS' | 'FAILED';
+  error_message?: string;
+  timestamp: string;
+}
+
 const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
   const [autoPayments, setAutoPayments] = useState<AutoPayment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,8 +41,42 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   
   const navigate = useNavigate();
+
+  // Debug interceptor for API calls
+  useEffect(() => {
+    const requestInterceptor = axios.interceptors.request.use(
+      config => {
+        console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
+        return config;
+      },
+      error => {
+        console.error('❌ Request Error:', error);
+        return Promise.reject(error);
+      }
+    );
+    
+    const responseInterceptor = axios.interceptors.response.use(
+      response => {
+        console.log(`✅ API Response: ${response.status} ${response.config.url}`, response.data);
+        return response;
+      },
+      error => {
+        console.error(`❌ Response Error: ${error.response?.status} ${error.config.url}`, 
+                      error.response?.data || error.message);
+        return Promise.reject(error);
+      }
+    );
+    
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, []);
 
   // Fetch user's auto payments
   useEffect(() => {
@@ -45,9 +89,12 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
           return;
         }
 
-        const response = await axios.get(`${API_BASE_URL}/auto-payments/?email=${email}`);
+        // Remove duplicate /api/v1
+        const response = await axios.get(`${API_BASE_URL}/autopayments/?email=${email}`);
+        console.log('Auto payments fetched:', response.data);
         setAutoPayments(response.data);
       } catch (err: any) {
+        console.error('Failed to fetch auto payments:', err.response || err);
         setError(err.response?.data?.message || 'Failed to fetch auto payments');
       } finally {
         setLoading(false);
@@ -94,7 +141,8 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
       const newStatus = currentStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
       const endpoint = newStatus === 'ACTIVE' ? 'resume' : 'pause';
       
-      const response = await axios.post(`${API_BASE_URL}/auto-payments/${id}/${endpoint}`);
+      // Correct endpoint format
+      const response = await axios.post(`${API_BASE_URL}/autopayments/${id}/${endpoint}/`);
       
       if (response.status === 200) {
         // Update the local state
@@ -102,8 +150,9 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
           payment.id === id ? { ...payment, status: newStatus as 'ACTIVE' | 'PAUSED' } : payment
         ));
       }
-    } catch (err) {
-      setError('Failed to update auto payment status');
+    } catch (err: any) {
+      console.error('Failed to update payment status:', err.response || err);
+      setError(err.response?.data?.message || 'Failed to update auto payment status');
     }
   };
 
@@ -113,14 +162,16 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
     }
     
     try {
-      const response = await axios.delete(`${API_BASE_URL}/auto-payments/${id}`);
+      // Correct endpoint format
+      const response = await axios.delete(`${API_BASE_URL}/autopayments/${id}/`);
       
       if (response.status === 200) {
         // Remove from local state
         setAutoPayments(autoPayments.filter(payment => payment.id !== id));
       }
-    } catch (err) {
-      setError('Failed to delete auto payment');
+    } catch (err: any) {
+      console.error('Failed to delete auto payment:', err.response || err);
+      setError(err.response?.data?.message || 'Failed to delete auto payment');
     }
   };
 
@@ -141,6 +192,36 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
       month: 'short', 
       day: 'numeric' 
     });
+  };
+
+  // Add this helper function near your other formatting functions
+  const formatAmount = (amount: string | number): string => {
+    if (typeof amount === 'string') {
+      return parseFloat(amount).toFixed(2);
+    }
+    return amount.toFixed(2);
+  };
+
+  // Add function to fetch payment history for a specific auto payment
+  const fetchPaymentHistory = async (paymentId: string) => {
+    setLoadingHistory(true);
+    try {
+      // Correct endpoint format - adjust if your backend uses a different endpoint
+      const response = await axios.get(`${API_BASE_URL}/autopayments/${paymentId}/history/`);
+      if (response.status === 200) {
+        setPaymentHistory(response.data);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch payment history:', err.response || err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Add function to handle showing payment history
+  const handleShowHistory = (paymentId: string) => {
+    setSelectedPaymentId(paymentId);
+    fetchPaymentHistory(paymentId);
   };
 
   return (
@@ -227,7 +308,7 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
                       </div>
                       
                       <div className="text-sm text-gray-600 mb-3">
-                        <p>Amount: <span className="font-medium text-gray-800">MK{payment.amount.toFixed(2)}</span></p>
+                        <p>Amount: <span className="font-medium text-gray-800">MK{formatAmount(payment.amount)}</span></p>
                         <div className="flex items-center mt-1">
                           <Clock className="h-4 w-4 mr-1" />
                           <span>Frequency: {formatFrequency(payment.frequency)}</span>
@@ -243,6 +324,12 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
                       )}
                       
                       <div className="flex justify-end space-x-2">
+                        <button 
+                          onClick={() => handleShowHistory(payment.id)}
+                          className="p-2 rounded text-blue-600 hover:bg-blue-50"
+                        >
+                          <Clock size={16} />
+                        </button>
                         <button 
                           onClick={() => handleToggleStatus(payment.id, payment.status)}
                           className={`p-2 rounded ${
@@ -305,6 +392,76 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
             </div>
           </div>
         </div>
+
+        {selectedPaymentId && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">Payment History</h3>
+                <button 
+                  onClick={() => setSelectedPaymentId(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ×
+                </button>
+              </div>
+              
+              {loadingHistory ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 />
+                </div>
+              ) : paymentHistory.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paymentHistory.map(history => (
+                        <tr key={history.id}>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                            {formatDate(history.timestamp)}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                            MK{formatAmount(history.amount)}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              history.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {history.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                            {history.error_message || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No payment history found for this auto payment.
+                </div>
+              )}
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setSelectedPaymentId(null)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -356,20 +513,59 @@ const AutoPaymentForm: React.FC<AutoPaymentFormProps> = ({ onSubmit, onCancel, s
     try {
       const email = localStorage.getItem('email');
       
-      const response = await axios.post(`${API_BASE_URL}/auto-payments/`, {
+      // Format the date as ISO string (YYYY-MM-DD) to match what backend expects
+      const formattedStartDate = startDate; // should already be in YYYY-MM-DD format from date input
+      
+      const payload = {
         user_email: email,
         recipient_email: recipient,
         amount: amountNum,
-        frequency,
-        start_date: startDate,
-        description
-      });
+        frequency: frequency,
+        start_date: formattedStartDate,
+        next_payment_date: formattedStartDate, // Add this field which is required by your backend
+        description: description
+      };
+      
+      console.log('Creating auto payment with data:', payload);
+      
+      // Fix the API endpoint path to match your backend
+      const response = await axios.post(`${API_BASE_URL}/autopayments/create/`, payload);
+      
+      console.log('Auto payment creation response:', response);
       
       if (response.status === 201) {
         onSubmit(response.data);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create auto payment');
+      console.error('Auto payment creation failed:', err.response || err);
+      
+      // Handle different error response formats
+      if (err.response?.data) {
+        if (typeof err.response.data === 'string') {
+          setError(err.response.data);
+        } else if (err.response.data.message) {
+          setError(err.response.data.message);
+        } else if (err.response.data.non_field_errors) {
+          setError(err.response.data.non_field_errors.join(', '));
+        } else if (err.response.data.next_payment_date) {
+          setError(`Next Payment Date: ${err.response.data.next_payment_date[0]}`);
+        } else if (err.response.data.amount) {
+          setError(`Amount: ${err.response.data.amount[0]}`);
+        } else if (err.response.data.start_date) {
+          setError(`Start date: ${err.response.data.start_date[0]}`);
+        } else {
+          // If other field errors exist, show the first one
+          const firstErrorKey = Object.keys(err.response.data)[0];
+          if (firstErrorKey) {
+            const errorMsg = err.response.data[firstErrorKey];
+            setError(`${firstErrorKey}: ${Array.isArray(errorMsg) ? errorMsg[0] : errorMsg}`);
+          } else {
+            setError('Failed to create auto payment');
+          }
+        }
+      } else {
+        setError('Failed to create auto payment');
+      }
     } finally {
       setLoading(false);
     }

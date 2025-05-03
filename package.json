@@ -13,6 +13,7 @@
     "axios": "^1.6.7",
     "caniuse-lite": "^1.0.30001707",
     "chart.js": "^4.4.9",
+    "framer-motion": "^12.9.4",
     "jsqr": "^1.4.0",
     "lucide-react": "^0.344.0",
     "qrcode.react": "^4.2.0",

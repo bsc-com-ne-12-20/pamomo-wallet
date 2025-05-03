@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { ArrowLeft, Plus, Calendar, Clock, ArrowUpRight, Pause, Play, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Clock, ArrowUpRight, Pause, Play, Trash2, Crown } from 'lucide-react';
 import Loader2 from '../components/Loader2';
 import axios from 'axios';
 import { API_BASE_URL, TRANSACTION_LIMITS } from '../utils/constants';
@@ -237,14 +237,18 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
           Back to Dashboard
         </button>
         
-        {subscription && subscription.plan === 'FREE' && (
+        {/* Change banner to show this is a premium feature */}
+        {subscription && subscription.plan !== 'PREMIUM' && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-center">
+            <div className="mr-3 p-2 bg-yellow-100 rounded-full">
+              <Crown size={24} className="text-yellow-600" />
+            </div>
             <div>
               <p className="text-sm font-medium text-yellow-800">
-                Auto payments are only available with Basic and Premium plans
+                Auto payments are exclusively available for Premium subscribers
               </p>
               <p className="text-xs text-yellow-700 mt-1">
-                Upgrade your subscription to set up recurring automatic payments.
+                Upgrade to Premium to set up recurring automatic payments and never miss a bill payment again.
                 <button 
                   onClick={() => navigate('/subscription')}
                   className="ml-1 text-[#8928A4] hover:underline"
@@ -260,7 +264,8 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">Auto Payments</h2>
             
-            {subscription && subscription.plan !== 'FREE' && (
+            {/* Change button to only show for Premium users */}
+            {subscription && subscription.plan === 'PREMIUM' && (
               <button
                 onClick={() => setShowCreateForm(!showCreateForm)}
                 className="flex items-center px-4 py-2 rounded-md bg-[#8928A4] text-white hover:bg-[#7a2391] transition-colors duration-200 shadow-sm font-medium"
@@ -281,7 +286,8 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
             </div>
           ) : (
             <>
-              {showCreateForm && subscription && subscription.plan !== 'FREE' && (
+              {/* Only show form for Premium users */}
+              {showCreateForm && subscription && subscription.plan === 'PREMIUM' && (
                 <AutoPaymentForm 
                   onSubmit={(newPayment) => {
                     setAutoPayments([...autoPayments, newPayment]);
@@ -292,10 +298,12 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
                 />
               )}
               
+              {/* Show payments only if premium or if has existing payments */}
               {autoPayments.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2">
                   {autoPayments.map(payment => (
                     <div key={payment.id} className="border rounded-lg p-4 shadow-sm bg-white">
+                      {/* Existing payment card content remains the same */}
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-medium text-gray-800">{payment.recipient_name || payment.recipient_email}</h3>
                         <span className={`px-2 py-1 text-xs rounded-full ${
@@ -323,43 +331,66 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
                         <p className="text-xs text-gray-500 mb-3 border-t pt-2">{payment.description}</p>
                       )}
                       
-                      <div className="flex justify-end space-x-2">
-                        <button 
-                          onClick={() => handleShowHistory(payment.id)}
-                          className="p-2 rounded text-blue-600 hover:bg-blue-50"
-                        >
-                          <Clock size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleToggleStatus(payment.id, payment.status)}
-                          className={`p-2 rounded ${
-                            payment.status === 'ACTIVE' 
-                              ? 'text-yellow-600 hover:bg-yellow-50' 
-                              : 'text-green-600 hover:bg-green-50'
-                          }`}
-                        >
-                          {payment.status === 'ACTIVE' ? <Pause size={16} /> : <Play size={16} />}
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(payment.id)}
-                          className="p-2 rounded text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      {/* Only allow actions for Premium users */}
+                      {subscription && subscription.plan === 'PREMIUM' ? (
+                        <div className="flex justify-end space-x-2">
+                          <button 
+                            onClick={() => handleShowHistory(payment.id)}
+                            className="p-2 rounded text-blue-600 hover:bg-blue-50"
+                          >
+                            <Clock size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleToggleStatus(payment.id, payment.status)}
+                            className={`p-2 rounded ${
+                              payment.status === 'ACTIVE' 
+                                ? 'text-yellow-600 hover:bg-yellow-50' 
+                                : 'text-green-600 hover:bg-green-50'
+                            }`}
+                          >
+                            {payment.status === 'ACTIVE' ? <Pause size={16} /> : <Play size={16} />}
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(payment.id)}
+                            className="p-2 rounded text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="border-t pt-3 mt-2">
+                          <p className="text-xs text-yellow-600 flex items-center">
+                            <Crown size={14} className="mr-1" />
+                            Upgrade to Premium to manage your auto payments
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-12 border rounded-md bg-gray-50">
-                  <p className="text-gray-500">No auto payments set up yet.</p>
-                  {subscription && subscription.plan !== 'FREE' && (
-                    <button
-                      onClick={() => setShowCreateForm(true)}
-                      className="mt-2 text-[#8928A4] hover:underline"
-                    >
-                      Create your first auto payment
-                    </button>
+                  {subscription && subscription.plan === 'PREMIUM' ? (
+                    <>
+                      <p className="text-gray-500">No auto payments set up yet.</p>
+                      <button
+                        onClick={() => setShowCreateForm(true)}
+                        className="mt-2 text-[#8928A4] hover:underline"
+                      >
+                        Create your first auto payment
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <Crown size={32} className="text-yellow-500 mb-2" />
+                      <p className="text-gray-500">Auto payments are a Premium feature.</p>
+                      <button 
+                        onClick={() => navigate('/subscription')}
+                        className="mt-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-[#8928A4] text-white rounded-md shadow hover:from-purple-700 hover:to-[#7a2391] transition-all"
+                      >
+                        Upgrade to Premium
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -388,6 +419,17 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
               <h4 className="font-medium text-[#8928A4]">What if my wallet doesn't have enough funds?</h4>
               <p className="text-gray-600 mt-1">
                 If your wallet has insufficient balance, the auto payment will fail. You'll receive a notification when this happens, and the payment will be attempted again the next day.
+              </p>
+            </div>
+            
+            {/* Add premium feature highlight */}
+            <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="flex items-center mb-2">
+                <Crown size={18} className="text-purple-600 mr-2" />
+                <h4 className="font-medium text-purple-800">Premium Feature</h4>
+              </div>
+              <p className="text-purple-700 text-sm">
+                Auto Payments is exclusively available to Premium subscribers. This feature helps you automate your recurring payments, saving you time and ensuring you never miss important payments.
               </p>
             </div>
           </div>

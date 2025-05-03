@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { CheckCircle, XCircle, ArrowLeft, ArrowRight, Star, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowLeft, ArrowRight, Star, Clock, Repeat, Calendar } from 'lucide-react';
 import axios from 'axios';
-// Import constants
-import { 
-  TRANSACTION_LIMITS,
-  API_BASE_URL
-} from '../utils/constants';
+// Import from env file instead of constants
+import { ENV } from '../utils/env';
+import { API_BASE_URL } from '../utils/constants';
 
 interface SubscriptionProps {
   username: string;
@@ -69,7 +67,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
   const [subscriptionResponse, setSubscriptionResponse] = useState<SubscriptionResponse | null>(null);
   const [showSubscriptionReceipt, setShowSubscriptionReceipt] = useState<boolean>(false);
 
-  // Subscription plans data - now using TRANSACTION_LIMITS from constants
+  // Updated Subscription plans data using ENV
   const plans: Plan[] = [
     {
       id: 'FREE',
@@ -77,34 +75,40 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
       price: 0,
       frequency: billingCycle,
       features: [
-        `MWK${TRANSACTION_LIMITS.FREE.toLocaleString()} limit per transaction`,
+        `MWK${Number(ENV.TRANSACTION_LIMITS.FREE).toLocaleString()} limit per transaction`,
         'Basic account features',
         'Standard support'
       ],
-      limits: `MWK${TRANSACTION_LIMITS.FREE.toLocaleString()} per transaction`
+      limits: `MWK${Number(ENV.TRANSACTION_LIMITS.FREE).toLocaleString()} per transaction`
     },
     {
       id: 'BASIC',
       name: 'Basic',
-      price: billingCycle === 'MONTHLY' ? 1500 : 15000,
+      price: billingCycle === 'MONTHLY' 
+        ? Number(ENV.SUBSCRIPTION_PRICES.BASIC_MONTHLY) 
+        : Number(ENV.SUBSCRIPTION_PRICES.BASIC_YEARLY),
       frequency: billingCycle,
       features: [
-        `MWK${TRANSACTION_LIMITS.BASIC.toLocaleString()} limit per transaction`,
+        `MWK${Number(ENV.TRANSACTION_LIMITS.BASIC).toLocaleString()} limit per transaction`,
         'Transaction Insights',
         'Priority customer support',
         'Reduced transaction fees'
       ],
-      limits: `MWK${TRANSACTION_LIMITS.BASIC.toLocaleString()} per transaction`,
+      limits: `MWK${Number(ENV.TRANSACTION_LIMITS.BASIC).toLocaleString()} per transaction`,
       recommended: true
     },
     {
       id: 'PREMIUM',
       name: 'Premium',
-      price: billingCycle === 'MONTHLY' ? 2500 : 25000,
+      price: billingCycle === 'MONTHLY' 
+        ? Number(ENV.SUBSCRIPTION_PRICES.PREMIUM_MONTHLY) 
+        : Number(ENV.SUBSCRIPTION_PRICES.PREMIUM_YEARLY),
       frequency: billingCycle,
       features: [
         'Unlimited transaction amounts',
         'Advanced Transaction Insights',
+        'Auto Payments for recurring bills',
+        'Automatic transactions scheduling',
         'Free agent Account',
         'No transaction fees',
         'VIP customer support'
@@ -276,6 +280,62 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
           <ArrowLeft size={16} className="mr-2" />
           Back to Dashboard
         </button>
+
+        {/* Add Premium Features Highlight Section */}
+        {selectedPlan === 'PREMIUM' && (
+          <div className="bg-gradient-to-r from-purple-100 to-purple-50 rounded-lg shadow-md p-6 mb-6 border border-purple-200">
+            <h2 className="text-lg font-bold text-purple-800 mb-4 flex items-center">
+              <Star size={20} className="mr-2 text-purple-600" fill="currentColor" />
+              Premium Plan Exclusive Features
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-100">
+                <div className="flex items-center mb-2">
+                  <Repeat size={18} className="text-purple-700 mr-2" />
+                  <h3 className="font-medium text-purple-800">Auto Payments</h3>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Set up recurring payments to automatically send money to the same recipient on a schedule you choose - daily, weekly, or monthly.
+                </p>
+                <ul className="mt-2 text-xs text-gray-600 space-y-1">
+                  <li className="flex items-start">
+                    <CheckCircle size={12} className="text-green-500 mr-1 mt-0.5 shrink-0" />
+                    <span>Never miss bill payments</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle size={12} className="text-green-500 mr-1 mt-0.5 shrink-0" />
+                    <span>Easy to pause or cancel anytime</span>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-100">
+                <div className="flex items-center mb-2">
+                  <Calendar size={18} className="text-purple-700 mr-2" />
+                  <h3 className="font-medium text-purple-800">Automatic Transactions</h3>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Schedule one-time future payments on specific dates and have them execute automatically when the time comes.
+                </p>
+                <ul className="mt-2 text-xs text-gray-600 space-y-1">
+                  <li className="flex items-start">
+                    <CheckCircle size={12} className="text-green-500 mr-1 mt-0.5 shrink-0" />
+                    <span>Plan ahead for important payments</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle size={12} className="text-green-500 mr-1 mt-0.5 shrink-0" />
+                    <span>Receive notifications upon completion</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            
+            <p className="text-xs text-purple-600 mt-4 italic">
+              Note: These features are only available with the Premium subscription plan.
+            </p>
+          </div>
+        )}
 
         {/* Subscription receipt/confirmation */}
         {showSubscriptionReceipt && subscriptionResponse && (
@@ -590,6 +650,14 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
               <h4 className="font-medium text-[#8928A4]">What are Transaction Insights?</h4>
               <p className="text-sm text-gray-600 mt-1">
                 Transaction Insights provide detailed analytics and visualizations of your spending patterns, helping you make better financial decisions.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-[#8928A4]">What are Auto Payments and Automatic Transactions?</h4>
+              <p className="text-sm text-gray-600 mt-1">
+                Auto Payments let you set up recurring transfers on a schedule (daily, weekly, monthly) to the same recipient. 
+                Automatic Transactions allow you to schedule one-time future payments. Both features are exclusive to Premium subscribers.
               </p>
             </div>
           </div>

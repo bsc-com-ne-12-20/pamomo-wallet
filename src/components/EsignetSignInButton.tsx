@@ -1,6 +1,6 @@
 import React from "react";
-import { Hexagon } from 'lucide-react';
-import esignetlogo from "./images/esignetlogo.png";
+import { ShieldCheck } from 'lucide-react';
+import malawiCoatOfArms from "./images/mw_govt_logo.png";
 
 interface ButtonConfig {
   labelText: string;
@@ -22,11 +22,12 @@ interface OidcConfig {
   scope: string;
   state: string;
   ui_locales: string;
+  response_type: string;
 }
 
 const EsignetSignInButton: React.FC = () => {
   const buttonConfig: ButtonConfig = {
-    labelText: "Sign in with eSignet",
+    labelText: "Continue with National ID",
     shape: "soft-edges",
     theme: "filled-orange",
     type: "standard",
@@ -56,12 +57,11 @@ const EsignetSignInButton: React.FC = () => {
 
   return (
     <button 
-      className="flex items-center gap-3 bg-[#eb6f2d] text-white px-5 py-3 rounded-xl hover:bg-[#d65d1e] transition-colors" 
+      className="flex items-center gap-3 bg-indigo-700 text-white px-5 py-3 rounded-xl hover:bg-indigo-800 transition-colors w-full justify-center shadow-md" 
       onClick={handleSignIn}
     >
-      <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
-        {/* <Hexagon size={16} className="text-[#eb6f2d]" /> */}
-        <img src={esignetlogo} alt="e-Signet Logo" />
+      <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center p-1">
+        <img src={malawiCoatOfArms} alt="Malawi Coat of Arms" className="h-full w-auto" />
       </div>
       <b>{buttonConfig.labelText}</b>
     </button>

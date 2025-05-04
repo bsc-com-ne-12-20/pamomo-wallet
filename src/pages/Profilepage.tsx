@@ -497,117 +497,131 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
     );
   };
 
-  const renderUserProfile = () => (
-    <div className="flex justify-center">
-      <div className="w-full max-w-3xl">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
-          <div className="text-center p-6 bg-gradient-to-r from-purple-700 to-purple-900 text-white">
-            <h2 className="text-2xl font-bold">USER PROFILE</h2>
-          </div>
+  const renderUserProfile = () => {
+    // Determine avatar based on gender
+    const getAvatarByGender = () => {
+      if (!userData?.gender) return 'https://avatar.iran.liara.run/public/50'; // Default male avatar
+      
+      const genderLower = userData.gender.toLowerCase();
+      if (genderLower === 'female') {
+        return 'https://avatar.iran.liara.run/public/51'; // Female avatar
+      } else {
+        return 'https://avatar.iran.liara.run/public/50'; // Male avatar (default)
+      }
+    };
 
-          <div className="flex flex-col md:flex-row">
-            <div className="w-full md:w-1/3 bg-gradient-to-b from-purple-700 to-purple-900 text-white flex flex-col items-center justify-center py-8 px-4">
-              <div className="relative mb-4">
-                <div className="rounded-full w-32 h-32 overflow-hidden border-4 border-white shadow-lg">
-                  <img
-                    src={userData?.picture || 'https://avatar.iran.liara.run/public/50'}
-                    alt={userData?.name || 'User'}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.onerror = null;
-                      target.src = 'https://avatar.iran.liara.run/public/50';
-                    }}
-                  />
-                </div>
-                <div className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md">
-                  <div className="bg-green-500 rounded-full w-4 h-4"></div>
-                </div>
-              </div>
-              <h3 className="text-xl font-semibold text-center">{userData?.name}</h3>
-              
-              {/* Show subscription status in profile sidebar */}
-              {subscription && (
-                <div className={`text-xs px-3 py-1 rounded-full mt-2 font-medium ${
-                  subscription.plan === 'PREMIUM' 
-                    ? 'bg-yellow-400 text-yellow-900' 
-                    : subscription.plan === 'BASIC'
-                    ? 'bg-blue-400 text-white' 
-                    : 'bg-white text-purple-800'
-                }`}>
-                  {subscription.plan} Member
-                </div>
-              )}
-              
-              <span className="text-purple-200 text-sm mt-2">Active Member</span>
+    return (
+      <div className="flex justify-center">
+        <div className="w-full max-w-3xl">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+            <div className="text-center p-6 bg-gradient-to-r from-purple-700 to-purple-900 text-white">
+              <h2 className="text-2xl font-bold">USER PROFILE</h2>
             </div>
 
-            <div className="w-full md:w-2/3 p-6 md:p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-purple-700">Personal Information</h3>
-                <button
-                  onClick={fetchUserProfile}
-                  className="text-purple-600 hover:text-purple-800 flex items-center text-sm"
-                >
-                  <RefreshCw size={14} className="mr-1" />
-                  Refresh
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                {renderInfoItem(getGenderIcon(), "Gender", userData?.gender || 'Not specified')}
-                {renderInfoItem(<Mail size={18} className="text-purple-600" />, "Email", userData?.email || '')}
-                {renderInfoItem(<Phone size={18} className="text-purple-600" />, "Phone Number", userData?.phone_number || '')}
-                {renderInfoItem(<Calendar size={18} className="text-purple-600" />, "Customer Since", formatDate(userData?.created_at || ''))}
-              </div>
-
-              {/* Subscription Information */}
-              {renderSubscriptionInfo()}
-
-              {/* QR Code Section */}
-              <div className="flex flex-col items-center mt-10 border-t pt-6">
-                <h4 className="text-lg font-medium text-gray-700 mb-4">Your QR Code</h4>
-                <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="0"
-                    height="0"
-                    className="absolute"
-                  >
-                    <defs>
-                      <linearGradient id="gradientColor" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" style={{ stopColor: '#8928A4', stopOpacity: 1 }} />
-                        <stop offset="50%" style={{ stopColor: '#6a1f7a', stopOpacity: 1 }} />
-                        <stop offset="100%" style={{ stopColor: '#4a148c', stopOpacity: 1 }} />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <div className="relative">
-                    <QRCode
-                      id="qrCode"
-                      value={userData?.email || ''}
-                      size={220}
-                      bgColor="#FFFFFF"
-                      fgColor="#8928A4"
-                      level="H"
+            <div className="flex flex-col md:flex-row">
+              <div className="w-full md:w-1/3 bg-gradient-to-b from-purple-700 to-purple-900 text-white flex flex-col items-center justify-center py-8 px-4">
+                <div className="relative mb-4">
+                  <div className="rounded-full w-32 h-32 overflow-hidden border-4 border-white shadow-lg">
+                    <img
+                      src={userData?.picture || getAvatarByGender()}
+                      alt={userData?.name || 'User'}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null;
+                        target.src = getAvatarByGender();
+                      }}
                     />
                   </div>
+                  <div className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md">
+                    <div className="bg-green-500 rounded-full w-4 h-4"></div>
+                  </div>
                 </div>
-                {/* Download Button */}
-                <button
-                  onClick={downloadQRCode}
-                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors flex items-center"
-                >
-                  <Download size={16} className="mr-2" />
-                  Download QR Code
-                </button>
+                <h3 className="text-xl font-semibold text-center">{userData?.name}</h3>
+                
+                {/* Show subscription status in profile sidebar */}
+                {subscription && (
+                  <div className={`text-xs px-3 py-1 rounded-full mt-2 font-medium ${
+                    subscription.plan === 'PREMIUM' 
+                      ? 'bg-yellow-400 text-yellow-900' 
+                      : subscription.plan === 'BASIC'
+                      ? 'bg-blue-400 text-white' 
+                      : 'bg-white text-purple-800'
+                  }`}>
+                    {subscription.plan} Member
+                  </div>
+                )}
+                
+                <span className="text-purple-200 text-sm mt-2">Active Member</span>
+              </div>
+
+              <div className="w-full md:w-2/3 p-6 md:p-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-semibold text-purple-700">Personal Information</h3>
+                  <button
+                    onClick={fetchUserProfile}
+                    className="text-purple-600 hover:text-purple-800 flex items-center text-sm"
+                  >
+                    <RefreshCw size={14} className="mr-1" />
+                    Refresh
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {renderInfoItem(getGenderIcon(), "Gender", userData?.gender || 'Not specified')}
+                  {renderInfoItem(<Mail size={18} className="text-purple-600" />, "Email", userData?.email || '')}
+                  {renderInfoItem(<Phone size={18} className="text-purple-600" />, "Phone Number", userData?.phone_number || '')}
+                  {renderInfoItem(<Calendar size={18} className="text-purple-600" />, "Customer Since", formatDate(userData?.created_at || ''))}
+                </div>
+
+                {/* Subscription Information */}
+                {renderSubscriptionInfo()}
+
+                {/* QR Code Section */}
+                <div className="flex flex-col items-center mt-10 border-t pt-6">
+                  <h4 className="text-lg font-medium text-gray-700 mb-4">Your QR Code</h4>
+                  <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="0"
+                      height="0"
+                      className="absolute"
+                    >
+                      <defs>
+                        <linearGradient id="gradientColor" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" style={{ stopColor: '#8928A4', stopOpacity: 1 }} />
+                          <stop offset="50%" style={{ stopColor: '#6a1f7a', stopOpacity: 1 }} />
+                          <stop offset="100%" style={{ stopColor: '#4a148c', stopOpacity: 1 }} />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="relative">
+                      <QRCode
+                        id="qrCode"
+                        value={userData?.email || ''}
+                        size={220}
+                        bgColor="#FFFFFF"
+                        fgColor="#8928A4"
+                        level="H"
+                      />
+                    </div>
+                  </div>
+                  {/* Download Button */}
+                  <button
+                    onClick={downloadQRCode}
+                    className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors flex items-center"
+                  >
+                    <Download size={16} className="mr-2" />
+                    Download QR Code
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">

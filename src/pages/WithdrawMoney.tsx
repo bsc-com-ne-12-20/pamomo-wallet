@@ -271,16 +271,6 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
                 <p className="text-xl font-bold text-[#8928A4]">MK{balance?.toLocaleString()}</p>
               </div>
             )}
-            
-            <div className="bg-yellow-50 p-3 rounded-md mb-6 flex items-start">
-              <AlertTriangle className="text-yellow-500 mr-2 mt-0.5 flex-shrink-0" size={18} />
-              <div>
-                <p className="text-sm text-yellow-700">
-                  Visit an authorized Pamomo agent and request their agent code to complete your withdrawal.
-                </p>
-              </div>
-            </div>
-            
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label htmlFor="agentCode" className="block text-sm font-medium text-gray-700 mb-1">

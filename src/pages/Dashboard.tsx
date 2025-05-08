@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { SendIcon, History, PlusCircle, Eye, EyeOff, Calendar } from 'lucide-react';
+import { SendIcon, History, PlusCircle, Eye, EyeOff, Calendar, Landmark } from 'lucide-react';
 import verifyIcon from '../components/images/verify.png';
 import axios from 'axios';
 
@@ -320,6 +320,18 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               <div className="text-center sm:text-left">
                 <h3 className="text-base sm:text-lg font-semibold">Withdraw Money</h3>
                 <p className="text-xs sm:text-sm text-gray-600">Cash out funds</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/bill-payment" className="bg-white rounded-lg shadow-md p-3 sm:p-6 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start">
+              <div className="bg-purple-100 p-2 sm:p-3 rounded-full sm:mr-4 mb-2 sm:mb-0">
+                <Landmark className="h-5 w-5 sm:h-6 sm:w-6 text-[#8928A4]" />
+              </div>
+              <div className="text-center sm:text-left">
+                <h3 className="text-base sm:text-lg font-semibold">Bill Payment</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Pay utility bills</p>
               </div>
             </div>
           </Link>

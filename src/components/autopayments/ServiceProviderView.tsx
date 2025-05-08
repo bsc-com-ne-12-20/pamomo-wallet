@@ -119,8 +119,57 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
   const filterProviders = (providers: ServiceProvider[]) => {
     // Filter by search query
     let filtered = providers;
+    
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
+      
+      // Check if the query matches any specific provider names (like ESCOM)
+      const specificProviderMatches: ServiceProvider[] = [];
+      
+      // Check in water utility providers
+      const waterMatches = defaultWaterUtilityProviders.filter(provider => 
+        provider.name.toLowerCase().includes(query)
+      ).map(provider => ({
+        id: provider.id,
+        name: provider.name,
+        icon: provider.logo || <Droplet size={36} className="text-blue-500" />,
+        email: provider.email,
+        category: 'water-specific',
+        originalCategory: 'water' // Add this to track original category
+      }));
+      
+      // Check in electricity providers
+      const electricityMatches = defaultElectricityProviders.filter(provider => 
+        provider.name.toLowerCase().includes(query)
+      ).map(provider => ({
+        id: provider.id,
+        name: provider.name,
+        icon: provider.logo || <Lightbulb size={36} className="text-yellow-500" />,
+        email: provider.email,
+        category: 'electricity-specific',
+        originalCategory: 'electricity' // Add this to track original category
+      }));
+      
+      // Check in internet providers
+      const internetMatches = defaultInternetProviders.filter(provider => 
+        provider.name.toLowerCase().includes(query)
+      ).map(provider => ({
+        id: provider.id,
+        name: provider.name,
+        icon: provider.logo || <Wifi size={36} className="text-green-500" />,
+        email: provider.email,
+        category: 'internet-specific',
+        originalCategory: 'internet' // Add this to track original category
+      }));
+      
+      specificProviderMatches.push(...waterMatches, ...electricityMatches, ...internetMatches);
+      
+      // If we found any specific provider matches, return those
+      if (specificProviderMatches.length > 0) {
+        return specificProviderMatches;
+      }
+      
+      // Otherwise, filter the main service categories as before
       filtered = filtered.filter(provider => 
         provider.name.toLowerCase().includes(query) || 
         provider.email.toLowerCase().includes(query)
@@ -285,8 +334,18 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
             <button
               key={provider.id}
               onClick={() => {
-                // For water, electricity, internet - show specific providers
-                if (['water', 'electricity', 'internet'].includes(provider.id)) {
+                // Check if this is a specific provider result (from search)
+                if (provider.category?.includes('-specific') && provider.originalCategory) {
+                  // Handle specific provider directly
+                  onSelectProvider({
+                    id: provider.id,
+                    name: provider.name,
+                    icon: provider.icon,
+                    email: provider.email
+                  });
+                }
+                // For water, electricity, internet category selection
+                else if (['water', 'electricity', 'internet'].includes(provider.id)) {
                   handleServiceTypeSelect(provider.id);
                 } else {
                   // For other service providers, show ComingSoonView

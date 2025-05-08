@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check } from 'lucide-react'; // Add this import
+import React, { useEffect, useState } from 'react';
+import { Check } from 'lucide-react';
 
 interface SuccessModalProps {
   show: boolean;
@@ -7,7 +7,7 @@ interface SuccessModalProps {
   receiver: string;
   receiverUsername: string;
   onClose: () => void;
-  isRecurring?: boolean; // New prop
+  isRecurring?: boolean;
 }
 
 const SuccessModal: React.FC<SuccessModalProps> = ({ 
@@ -18,7 +18,26 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
   onClose,
   isRecurring = false 
 }) => {
+  const [transactionId, setTransactionId] = useState<string>('');
+  
+  useEffect(() => {
+    if (show) {
+      // Try to get values from localStorage in case they were set by the payment handler
+      const storedReceiver = localStorage.getItem('transferReceiver') || receiver;
+      const storedUsername = localStorage.getItem('transferReceiverUsername') || receiverUsername;
+      const storedTransactionId = localStorage.getItem('transactionId') || '';
+      
+      if (storedTransactionId) {
+        setTransactionId(storedTransactionId);
+      }
+    }
+  }, [show, receiver, receiverUsername]);
+
   if (!show) return null;
+
+  const displayReceiver = localStorage.getItem('transferReceiver') || receiver;
+  const displayUsername = localStorage.getItem('transferReceiverUsername') || receiverUsername;
+  const displayAmount = localStorage.getItem('transferAmount') || amount;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -29,21 +48,40 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
             <Check className="h-8 w-8 text-green-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 mb-2">Payment Successful!</h3>
-          <p className="text-sm text-gray-600 text-center mb-1">
-            You have successfully sent <span className="font-semibold">MK{parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span> to {receiverUsername || receiver}
-          </p>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="bg-gray-50 p-3 rounded-md">
+            <p className="text-sm text-gray-600 mb-1">Amount</p>
+            <p className="text-lg font-semibold text-gray-900">MK{parseFloat(displayAmount).toLocaleString()}</p>
+          </div>
+          
+          <div className="bg-gray-50 p-3 rounded-md">
+            <p className="text-sm text-gray-600 mb-1">Recipient</p>
+            <p className="text-lg font-semibold text-gray-900">{displayUsername}</p>
+            <p className="text-xs text-gray-500">{displayReceiver}</p>
+          </div>
+
+          {transactionId && (
+            <div className="bg-gray-50 p-3 rounded-md">
+              <p className="text-sm text-gray-600 mb-1">Transaction ID</p>
+              <p className="text-md font-medium text-gray-900">{transactionId}</p>
+            </div>
+          )}
+          
           {isRecurring && (
-            <div className="mt-3 bg-purple-50 p-3 rounded-md w-full">
-              <p className="text-sm text-purple-700 font-medium">Recurring Payment Set Up</p>
-              <p className="text-xs text-purple-600">
-                Auto payments have been configured and will continue according to your schedule.
+            <div className="bg-green-50 p-3 rounded-md border border-green-100">
+              <p className="text-sm font-medium text-green-800 mb-1">Auto Payment Scheduled</p>
+              <p className="text-xs text-green-700">
+                Your recurring payment has been set up successfully. You can manage all auto payments in the Auto Payments section.
               </p>
             </div>
           )}
         </div>
+        
         <button
           onClick={onClose}
-          className="w-full py-2.5 px-4 bg-[#8928A4] text-white rounded-md hover:bg-[#722389] transition-colors shadow-sm font-medium"
+          className="mt-6 w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
         >
           Close
         </button>

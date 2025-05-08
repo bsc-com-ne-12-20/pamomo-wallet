@@ -2,9 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Loader2 from '../components/Loader2';
-import { ArrowLeft, AlertTriangle, Wallet, CreditCard, Check } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Wallet, CreditCard, Check, Building2, Smartphone } from 'lucide-react';
 import axios from 'axios';
 import jsQR from 'jsqr';
+
+// Import bank logos
+import nbLogo from '../components/images/banks/NB.png';
+import standardLogo from '../components/images/banks/standard.png';
+import fcbLogo from '../components/images/banks/fcb.png';
+import nbsLogo from '../components/images/banks/nbs.png';
+
+// Import wallet logos for mobile money providers
+import mpambaLogo from '../components/images/wallets/mpamba.png';
+import airtelMoneyLogo from '../components/images/wallets/airtelmoney.png';
 
 // Import components
 import BalanceDisplay from '../components/sendmoney/BalanceDisplay';
@@ -34,7 +44,23 @@ interface SendMoneyProps {
   isVerified: boolean;
 }
 
-type PaymentMethod = 'pamomo_wallet' | 'external_wallet';
+// Expanded payment method types
+type PaymentMethod = 'pamomo_wallet' | 'mobile_money' | 'bank_transfer' | 'external_wallet';
+
+// Bank data interface
+interface BankOption {
+  id: string;
+  name: string;
+  logo: string;  // Updated to require logo
+}
+
+// Mobile money provider interface
+interface MobileProvider {
+  id: string;
+  name: string;
+  logo: string;
+  country: string;
+}
 
 const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
   const [balance, setBalance] = useState<number | null>(null);
@@ -59,9 +85,36 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
   const [frequency, setFrequency] = useState('DAILY');
   const [startDate, setStartDate] = useState('');
   const [description, setDescription] = useState('');
+  
+  // New state variables for external transfers
+  const [showTransferDetails, setShowTransferDetails] = useState(false);
+  const [selectedBank, setSelectedBank] = useState<string>('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [mobileProvider, setMobileProvider] = useState<string>('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [cardHolderName, setCardHolderName] = useState('');
+  
   const navigate = useNavigate();
 
   const minDate = new Date().toISOString().split('T')[0];
+
+  // Banks available for transfer with logos
+  const availableBanks: BankOption[] = [
+    { id: 'nbm', name: 'National Bank', logo: nbLogo },
+    { id: 'standard', name: 'Standard Bank', logo: standardLogo },
+    { id: 'first-capital', name: 'First Capital', logo: fcbLogo },
+    { id: 'nbs', name: 'NBS Bank', logo: nbsLogo }
+  ];
+
+  // Mobile money providers with logos
+  const mobileProviders: MobileProvider[] = [
+    { id: 'tnm-mpamba', name: 'TNM Mpamba', logo: mpambaLogo, country: 'Malawi' },
+    { id: 'airtel-money', name: 'Airtel Money', logo: airtelMoneyLogo, country: 'Malawi' }
+  ];
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -190,6 +243,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       const email = localStorage.getItem('email');
 
       if (!email) {
+        setError('You are not logged in. Please log in again.');
         setLoading(false);
         return;
       }
@@ -415,14 +469,15 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     }
   };
 
-  const handleSubmitExternalWallet = async (e: React.FormEvent) => {
+  // Handle external payment submission based on the selected payment method
+  const handleSubmitExternalPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     setIsSending(true);
 
-    if (!receiver || !amount) {
-      setError('Please fill in all fields');
+    if (!amount) {
+      setError('Please enter an amount');
       setTimeout(() => setIsSending(false), 3000);
       return;
     }
@@ -440,14 +495,77 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       return;
     }
 
-    // For external wallet, we use the payment gateway
+    // Validate fields based on payment method
+    if (paymentMethod === 'bank_transfer') {
+      if (!selectedBank) {
+        setError('Please select a bank');
+        setTimeout(() => setIsSending(false), 3000);
+        return;
+      }
+      if (!accountNumber) {
+        setError('Please enter an account number');
+        setTimeout(() => setIsSending(false), 3000);
+        return;
+      }
+      if (!accountName) {
+        setError('Please enter the account name');
+        setTimeout(() => setIsSending(false), 3000);
+        return;
+      }
+    } else if (paymentMethod === 'mobile_money') {
+      if (!mobileProvider) {
+        setError('Please select a mobile money provider');
+        setTimeout(() => setIsSending(false), 3000);
+        return;
+      }
+      if (!mobileNumber) {
+        setError('Please enter a mobile number');
+        setTimeout(() => setIsSending(false), 3000);
+        return;
+      }
+    }
+
+    // For external payments, we use the payment gateway
     try {
       const senderEmail = localStorage.getItem('email');
       
       // Store transfer info in localStorage
       localStorage.setItem('transferAmount', amount);
-      localStorage.setItem('transferReceiver', receiver);
-      localStorage.setItem('transferReceiverUsername', receiverUsername);
+      
+      if (paymentMethod === 'bank_transfer') {
+        const selectedBankName = availableBanks.find(bank => bank.id === selectedBank)?.name || selectedBank;
+        localStorage.setItem('transferReceiver', `${accountName} (${selectedBankName})`);
+        localStorage.setItem('transferReceiverUsername', accountNumber);
+      } else if (paymentMethod === 'mobile_money') {
+        const providerName = mobileProviders.find(provider => provider.id === mobileProvider)?.name || mobileProvider;
+        localStorage.setItem('transferReceiver', `${mobileNumber} (${providerName})`);
+        localStorage.setItem('transferReceiverUsername', mobileNumber);
+      } else {
+        localStorage.setItem('transferReceiver', cardHolderName);
+        localStorage.setItem('transferReceiverUsername', cardHolderName);
+      }
+
+      // Build metadata based on payment method
+      let metadata = {
+        sender_email: senderEmail,
+        transaction_type: 'external_transfer',
+        payment_method: paymentMethod
+      };
+
+      if (paymentMethod === 'bank_transfer') {
+        metadata = {
+          ...metadata,
+          bank_id: selectedBank,
+          account_number: accountNumber,
+          account_name: accountName
+        };
+      } else if (paymentMethod === 'mobile_money') {
+        metadata = {
+          ...metadata,
+          provider_id: mobileProvider,
+          mobile_number: mobileNumber
+        };
+      }
 
       const response = await fetch(`${PAYMENT_API_URL}/payment`, {
         method: 'POST',
@@ -461,11 +579,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
           amount: amountNum.toString(),
           callback_url: 'https://pamomo-wallet.netlify.app/verifytransfer',
           return_url: 'https://pamomo-wallet.netlify.app/transfer/complete',
-          metadata: {
-            receiver_email: receiver,
-            sender_email: senderEmail,
-            transaction_type: 'transfer'
-          }
+          metadata: metadata
         }),
       });
 
@@ -483,17 +597,195 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    if (paymentMethod === 'pamomo_wallet') {
-      return handleSubmitPamomoWallet(e);
-    } else {
-      return handleSubmitExternalWallet(e);
+  // Handle mobile money payment submission
+  const handleMobileMoneySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsSending(true);
+
+    // Validate input fields
+    if (!mobileProvider) {
+      setError('Please select a mobile money provider');
+      setIsSending(false);
+      return;
+    }
+
+    if (!mobileNumber) {
+      setError('Please enter a mobile number');
+      setIsSending(false);
+      return;
+    }
+
+    // Different validation based on provider
+    if (mobileProvider === 'tnm-mpamba') {
+      // TNM Mpamba numbers start with 08
+      if (!mobileNumber.match(/^08\d{8}$/)) {
+        setError('TNM Mpamba number must start with 08 and be 10 digits long');
+        setIsSending(false);
+        return;
+      }
+    } else if (mobileProvider === 'airtel-money') {
+      // Airtel Money numbers start with 09
+      if (!mobileNumber.match(/^09\d{8}$/)) {
+        setError('Airtel Money number must start with 09 and be 10 digits long');
+        setIsSending(false);
+        return;
+      }
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount');
+      setIsSending(false);
+      return;
+    }
+
+    const amountNum = parseFloat(amount);
+    
+    // Check balance
+    if (amountNum > (balance || 0)) {
+      setError('Insufficient balance');
+      setIsSending(false);
+      return;
+    }
+
+    // Check transaction limit
+    if (!checkTransactionLimit(amountNum)) {
+      setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
+      setIsSending(false);
+      return;
+    }
+
+    try {
+      // Generate a mock transaction ID
+      const mockTransactionId = generateMockTransactionId();
+      
+      // Mock successful payment - simulate API delay
+      setTimeout(() => {
+        // Store transfer info for success modal
+        const providerName = mobileProviders.find(provider => provider.id === mobileProvider)?.name || mobileProvider;
+        localStorage.setItem('transferReceiver', mobileNumber);
+        localStorage.setItem('transferReceiverUsername', `${mobileNumber} (${providerName})`);
+        localStorage.setItem('transferAmount', amount);
+        localStorage.setItem('transactionId', mockTransactionId);
+        
+        setIsSending(false);
+        setShowSuccessPopup(true);
+      }, 2000);
+    } catch (error) {
+      console.error("Error processing mobile money payment:", error);
+      setError('An error occurred while processing your mobile money payment.');
+      setIsSending(false);
     }
   };
 
+  // Handle bank transfer payment submission
+  const handleBankTransferSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsSending(true);
+
+    // Validate input fields
+    if (!selectedBank) {
+      setError('Please select a bank');
+      setIsSending(false);
+      return;
+    }
+
+    if (!accountNumber) {
+      setError('Please enter an account number');
+      setIsSending(false);
+      return;
+    }
+
+    if (!accountName) {
+      setError('Please enter the account name');
+      setIsSending(false);
+      return;
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount');
+      setIsSending(false);
+      return;
+    }
+
+    const amountNum = parseFloat(amount);
+    
+    // Check balance
+    if (amountNum > (balance || 0)) {
+      setError('Insufficient balance');
+      setIsSending(false);
+      return;
+    }
+
+    // Check transaction limit
+    if (!checkTransactionLimit(amountNum)) {
+      setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
+      setIsSending(false);
+      return;
+    }
+
+    try {
+      // Generate a mock transaction ID
+      const mockTransactionId = generateMockTransactionId();
+      const selectedBankName = availableBanks.find(bank => bank.id === selectedBank)?.name || selectedBank;
+      
+      // Store transfer info for success modal
+      localStorage.setItem('transferReceiver', accountNumber);
+      localStorage.setItem('transferReceiverUsername', `${accountName} (${selectedBankName})`);
+      localStorage.setItem('transferAmount', amount);
+      localStorage.setItem('transactionId', mockTransactionId);
+      
+      // Mock successful payment - simulate API delay
+      setTimeout(() => {
+        setIsSending(false);
+        setShowSuccessPopup(true);
+      }, 2000);
+    } catch (error) {
+      console.error("Error processing bank transfer:", error);
+      setError('An error occurred while processing your bank transfer.');
+      setIsSending(false);
+    }
+  };
+
+  // Generate a mock transaction ID with format PMMO-XXXXX-XXXXX
+  const generateMockTransactionId = (): string => {
+    const randomPart1 = Math.floor(10000 + Math.random() * 90000);
+    const randomPart2 = Math.floor(10000 + Math.random() * 90000);
+    return `PMMO-${randomPart1}-${randomPart2}`;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    if (paymentMethod === 'pamomo_wallet') {
+      return handleSubmitPamomoWallet(e);
+    } else if (paymentMethod === 'mobile_money') {
+      return handleMobileMoneySubmit(e);
+    } else if (paymentMethod === 'bank_transfer') {
+      return handleBankTransferSubmit(e);
+    } else {
+      return handleSubmitExternalPayment(e);
+    }
+  };
+
+  // Handle payment method selection, clear localStorage to avoid showing previous transaction data
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
     setPaymentMethod(method);
     setShowPaymentMethodSelection(false);
+    setShowTransferDetails(true);
+    // Reset form fields when changing payment method
+    if (method !== 'pamomo_wallet') {
+      setReceiver('');
+      setReceiverUsername('');
+    }
+    setError('');
+    
+    // Clear any previous transfer data from localStorage
+    localStorage.removeItem('transferReceiver');
+    localStorage.removeItem('transferReceiverUsername');
+    localStorage.removeItem('transferAmount');
+    localStorage.removeItem('transactionId');
   };
 
   const handlePopupClose = () => {
@@ -507,7 +799,21 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
 
   const handleBackToPaymentSelection = () => {
     setShowPaymentMethodSelection(true);
+    setShowTransferDetails(false);
     setError('');
+  };
+
+  // Reset fields helper
+  const resetExternalTransferFields = () => {
+    setSelectedBank('');
+    setAccountNumber('');
+    setAccountName('');
+    setMobileProvider('');
+    setMobileNumber('');
+    setCardNumber('');
+    setCardExpiry('');
+    setCardCvv('');
+    setCardHolderName('');
   };
 
   const username = localStorage.getItem('username') || 'User';
@@ -567,10 +873,10 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                     onClick={() => handlePaymentMethodSelect('pamomo_wallet')}
                     className="w-full bg-white border-2 border-[#8928A4] p-4 rounded-lg flex items-center text-left hover:bg-[#f9f0fc] transition-colors"
                   >
-                    <Wallet className="text-[#8928A4] mr-3" />
+                    <Wallet className="text-[#8928A4] mr-3 h-6 w-6" />
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">Pamomo Wallet</p>
-                      <p className="text-xs text-gray-500">Use your available balance: MK{balance?.toLocaleString() || '0'}</p>
+                      <p className="text-xs text-gray-500">Send money from Pamomo to other Pamomo users</p>
                     </div>
                   </button>
                   
@@ -578,10 +884,32 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                     onClick={() => handlePaymentMethodSelect('external_wallet')}
                     className="w-full bg-white border border-gray-300 p-4 rounded-lg flex items-center text-left hover:bg-gray-50 transition-colors"
                   >
-                    <CreditCard className="text-gray-600 mr-3" />
+                    <CreditCard className="text-purple-600 mr-3 h-6 w-6" />
                     <div className="flex-1">
-                      <p className="font-medium text-gray-800">External Payment</p>
-                      <p className="text-xs text-gray-500">Pay using mobile money, credit card, or other options</p>
+                      <p className="font-medium text-gray-800">External Wallet</p>
+                      <p className="text-xs text-gray-500">Send money from external digital wallets to anyone</p>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handlePaymentMethodSelect('bank_transfer')}
+                    className="w-full bg-white border border-gray-300 p-4 rounded-lg flex items-center text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <Building2 className="text-blue-600 mr-3 h-6 w-6" />
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800">Bank Transfer</p>
+                      <p className="text-xs text-gray-500">Send money from Pamomo to bank accounts</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handlePaymentMethodSelect('mobile_money')}
+                    className="w-full bg-white border border-gray-300 p-4 rounded-lg flex items-center text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <Smartphone className="text-green-600 mr-3 h-6 w-6" />
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800">Mobile Money</p>
+                      <p className="text-xs text-gray-500">Send money from Pamomo to mobile money accounts</p>
                     </div>
                   </button>
                 </div>
@@ -589,14 +917,18 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
             ) : (
               <div>
                 <div className="mb-6 bg-blue-50 p-3 rounded-lg flex items-center">
-                  {paymentMethod === 'pamomo_wallet' ? (
-                    <Wallet className="text-[#8928A4] mr-3" />
-                  ) : (
-                    <CreditCard className="text-gray-600 mr-3" />
-                  )}
+                  {paymentMethod === 'pamomo_wallet' && <Wallet className="text-[#8928A4] mr-3" />}
+                  {paymentMethod === 'bank_transfer' && <Building2 className="text-blue-600 mr-3" />}
+                  {paymentMethod === 'mobile_money' && <Smartphone className="text-green-600 mr-3" />}
+                  {paymentMethod === 'external_wallet' && <CreditCard className="text-purple-600 mr-3" />}
                   <div>
                     <p className="text-sm font-medium">
-                      Payment Method: {paymentMethod === 'pamomo_wallet' ? 'Pamomo Wallet' : 'External Payment'}
+                      Payment Method: {
+                        paymentMethod === 'pamomo_wallet' ? 'Pamomo Wallet' :
+                        paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
+                        paymentMethod === 'mobile_money' ? 'Mobile Money' :
+                        'External Wallet'
+                      }
                     </p>
                     <button 
                       onClick={handleBackToPaymentSelection}
@@ -608,94 +940,384 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                 </div>
 
                 {paymentMethod === 'pamomo_wallet' && (
-                  <BalanceDisplay balance={balance} loading={loading} />
-                )}
+                  <>
+                    <BalanceDisplay balance={balance} loading={loading} />
 
-                <SendMoneyForm
-                  receiver={receiver}
-                  setReceiver={setReceiver}
-                  amount={amount}
-                  handleAmountChange={handleAmountChange}
-                  error={error}
-                  handleSubmit={handleSubmit}
-                  handleScanQRCode={handleScanQRCode}
-                  transactionFee={transactionFee}
-                  totalDeduction={totalDeduction}
-                  transactionLimit={getTransactionLimit()}
-                  showLimitWarning={!subscriptionLoading && !!subscription && subscription.plan !== 'PREMIUM'}
-                  submitButtonText={paymentMethod === 'pamomo_wallet' 
-                    ? 'Send from Pamomo Wallet' 
-                    : 'Continue to Payment'}
-                />
-
-                {subscription && subscription.plan !== 'FREE' && (
-                  <div className="flex items-center mt-4 mb-2">
-                    <input
-                      type="checkbox"
-                      id="makeRecurring"
-                      className="rounded text-[#8928A4] focus:ring-[#8928A4] h-4 w-4"
-                      checked={makeRecurring}
-                      onChange={(e) => setMakeRecurring(e.target.checked)}
+                    <SendMoneyForm
+                      receiver={receiver}
+                      setReceiver={setReceiver}
+                      amount={amount}
+                      handleAmountChange={handleAmountChange}
+                      error={error}
+                      handleSubmit={handleSubmit}
+                      handleScanQRCode={handleScanQRCode}
+                      transactionFee={transactionFee}
+                      totalDeduction={totalDeduction}
+                      transactionLimit={getTransactionLimit()}
+                      showLimitWarning={!subscriptionLoading && !!subscription && subscription.plan !== 'PREMIUM'}
+                      submitButtonText='Send from Pamomo Wallet'
                     />
-                    <label htmlFor="makeRecurring" className="ml-2 text-sm text-gray-700">
-                      Set up as recurring auto payment
-                    </label>
-                  </div>
+
+                    {subscription && subscription.plan !== 'FREE' && (
+                      <div className="flex items-center mt-4 mb-2">
+                        <input
+                          type="checkbox"
+                          id="makeRecurring"
+                          className="rounded text-[#8928A4] focus:ring-[#8928A4] h-4 w-4"
+                          checked={makeRecurring}
+                          onChange={(e) => setMakeRecurring(e.target.checked)}
+                        />
+                        <label htmlFor="makeRecurring" className="ml-2 text-sm text-gray-700">
+                          Set up as recurring auto payment
+                        </label>
+                      </div>
+                    )}
+
+                    {makeRecurring && (
+                      <div className="bg-gray-50 p-3 rounded-md mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label htmlFor="frequency" className="block text-xs font-medium text-gray-700 mb-1">
+                              Frequency
+                            </label>
+                            <select
+                              id="frequency"
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs p-1.5 border"
+                              value={frequency}
+                              onChange={(e) => setFrequency(e.target.value)}
+                            >
+                              <option value="DAILY">Daily</option>
+                              <option value="WEEKLY">Weekly</option>
+                              <option value="BIWEEKLY">Bi-weekly</option>
+                              <option value="MONTHLY">Monthly</option>
+                            </select>
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="startDate" className="block text-xs font-medium text-gray-700 mb-1">
+                              Start Date
+                            </label>
+                            <input
+                              type="date"
+                              id="startDate"
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs p-1.5 border"
+                              value={startDate}
+                              onChange={(e) => setStartDate(e.target.value)}
+                              min={minDate}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <label htmlFor="description" className="block text-xs font-medium text-gray-700 mb-1">
+                            Description (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            id="description"
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs p-1.5 border"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="e.g. Monthly rent payment"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {makeRecurring && (
-                  <div className="bg-gray-50 p-3 rounded-md mb-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label htmlFor="frequency" className="block text-xs font-medium text-gray-700 mb-1">
-                          Frequency
-                        </label>
-                        <select
-                          id="frequency"
-                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs p-1.5 border"
-                          value={frequency}
-                          onChange={(e) => setFrequency(e.target.value as any)}
-                        >
-                          <option value="DAILY">Daily</option>
-                          <option value="WEEKLY">Weekly</option>
-                          <option value="BIWEEKLY">Every 2 Weeks</option>
-                          <option value="MONTHLY">Monthly</option>
-                        </select>
+                {paymentMethod === 'bank_transfer' && (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Select Bank</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+                        {availableBanks.map(bank => (
+                          <button
+                            key={bank.id}
+                            type="button"
+                            onClick={() => setSelectedBank(bank.id)}
+                            className={`border rounded-lg p-3 flex flex-col items-center transition-all ${
+                              selectedBank === bank.id 
+                                ? 'border-blue-500 bg-blue-50 shadow-sm' 
+                                : 'border-gray-300 hover:border-blue-300 hover:bg-blue-50'
+                            }`}
+                          >
+                            <div className="h-12 w-12 mb-2 rounded flex items-center justify-center overflow-hidden">
+                              {bank.logo ? (
+                                <img 
+                                  src={bank.logo} 
+                                  alt={bank.name} 
+                                  className="max-h-full max-w-full object-contain"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.onerror = null;
+                                    target.src = 'https://via.placeholder.com/40x40?text=Bank';
+                                  }}
+                                />
+                              ) : (
+                                <Building2 className="h-8 w-8 text-blue-500" />
+                              )}
+                            </div>
+                            <span className="text-xs text-center font-medium">{bank.name}</span>
+                          </button>
+                        ))}
                       </div>
-                      
-                      <div>
-                        <label htmlFor="startDate" className="block text-xs font-medium text-gray-700 mb-1">
-                          Start Date
-                        </label>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+                      <input
+                        type="text"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                        placeholder="Enter account number"
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+                      <input
+                        type="text"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                        placeholder="Enter account holder's name"
+                        value={accountName}
+                        onChange={(e) => setAccountName(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Reference/Description</label>
+                      <input
+                        type="text"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                        placeholder="e.g. Invoice #1234 or Rent Payment"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                      />
+                      <p className="mt-1 text-xs text-gray-500">This reference will appear on the recipient's statement</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <p className="text-gray-400"><b>MK</b></p>
+                        </div>
                         <input
-                          type="date"
-                          id="startDate"
-                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs p-1.5 border"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          min={minDate}
+                          type="number"
+                          className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                          placeholder="0.00"
+                          value={amount}
+                          onChange={handleAmountChange}
+                          min="0.01"
+                          step="0.01"
                         />
                       </div>
                     </div>
-                    
-                    <div className="mt-3">
-                      <label htmlFor="description" className="block text-xs font-medium text-gray-700 mb-1">
-                        Description (Optional)
-                      </label>
+
+                    {amount && (
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <p className="text-sm text-gray-700">
+                          Transaction Fee ({(TRANSFER_FEE_PERCENTAGE * 100).toFixed()}%): 
+                          <span className="font-medium"> MK{transactionFee.toFixed(2)}</span>
+                        </p>
+                        <p className="text-sm text-gray-700 font-bold mt-1">
+                          Total Cost: <span className="text-[#8928A4]">MK{totalDeduction.toFixed(2)}</span>
+                        </p>
+                      </div>
+                    )}
+
+                    {error && (
+                      <div className="p-2 bg-red-50 text-red-500 rounded-md text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                    >
+                      Send to Bank Account
+                    </button>
+                  </form>
+                )}
+
+                {paymentMethod === 'mobile_money' && (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Select Mobile Money Provider</label>
+                      <div className="grid grid-cols-2 gap-3 mb-2">
+                        {mobileProviders.map(provider => (
+                          <button
+                            key={provider.id}
+                            type="button"
+                            onClick={() => setMobileProvider(provider.id)}
+                            className={`border rounded-lg p-3 flex flex-col items-center transition-all ${
+                              mobileProvider === provider.id 
+                                ? 'border-green-500 bg-green-50 shadow-sm' 
+                                : 'border-gray-300 hover:border-green-300 hover:bg-green-50'
+                            }`}
+                          >
+                            <div className="h-14 w-14 mb-2 rounded flex items-center justify-center overflow-hidden">
+                              {provider.logo ? (
+                                <img 
+                                  src={provider.logo} 
+                                  alt={provider.name} 
+                                  className="max-h-full max-w-full object-contain"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.onerror = null;
+                                    target.src = 'https://via.placeholder.com/48x48?text=Mobile';
+                                  }}
+                                />
+                              ) : (
+                                <Smartphone className="h-10 w-10 text-green-500" />
+                              )}
+                            </div>
+                            <span className="text-sm text-center font-medium">{provider.name}</span>
+                            <span className="text-xs text-center text-gray-500">{provider.country}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                      <input
+                        type="tel"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                        placeholder="Enter mobile number (e.g. 0991234567)"
+                        value={mobileNumber}
+                        onChange={(e) => setMobileNumber(e.target.value)}
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Format: Numbers should start with 09 or 08</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Reference/Description</label>
                       <input
                         type="text"
-                        id="description"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-xs p-1.5 border"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                        placeholder="e.g. Payment for goods"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        placeholder="e.g. Monthly rent payment"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">This reference will appear in the recipient's notifications</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <p className="text-gray-400"><b>MK</b></p>
+                        </div>
+                        <input
+                          type="number"
+                          className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                          placeholder="0.00"
+                          value={amount}
+                          onChange={handleAmountChange}
+                          min="0.01"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    {amount && (
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <p className="text-sm text-gray-700">
+                          Transaction Fee ({(TRANSFER_FEE_PERCENTAGE * 100).toFixed()}%): 
+                          <span className="font-medium"> MK{transactionFee.toFixed(2)}</span>
+                        </p>
+                        <p className="text-sm text-gray-700 font-bold mt-1">
+                          Total Cost: <span className="text-[#8928A4]">MK{totalDeduction.toFixed(2)}</span>
+                        </p>
+                      </div>
+                    )}
+
+                    {error && (
+                      <div className="p-2 bg-red-50 text-red-500 rounded-md text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                    >
+                      Send to Mobile Money
+                    </button>
+                  </form>
+                )}
+
+                {paymentMethod === 'external_wallet' && (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Recipient Email</label>
+                      <input
+                        type="email"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                        placeholder="Enter recipient email"
+                        value={receiver}
+                        onChange={(e) => setReceiver(e.target.value)}
                       />
                     </div>
-                  </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <p className="text-gray-400"><b>MK</b></p>
+                        </div>
+                        <input
+                          type="number"
+                          className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                          placeholder="0.00"
+                          value={amount}
+                          onChange={handleAmountChange}
+                          min="0.01"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    {amount && (
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <p className="text-sm text-gray-700">
+                          Transaction Fee ({(TRANSFER_FEE_PERCENTAGE * 100).toFixed()}%): 
+                          <span className="font-medium"> MK{transactionFee.toFixed(2)}</span>
+                        </p>
+                        <p className="text-sm text-gray-700 font-bold mt-1">
+                          Total Cost: <span className="text-[#8928A4]">MK{totalDeduction.toFixed(2)}</span>
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="bg-yellow-50 p-3 rounded-md border border-yellow-100">
+                      <p className="text-sm font-medium text-yellow-800 mb-1">External Wallet Payment</p>
+                      <p className="text-xs text-yellow-700">
+                        You'll be redirected to our secure payment gateway to complete this transaction using your preferred external wallet.
+                      </p>
+                    </div>
+
+                    {error && (
+                      <div className="p-2 bg-red-50 text-red-500 rounded-md text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                    >
+                      Continue to Payment Gateway
+                    </button>
+                  </form>
                 )}
               </div>
             )}
-          </div>
+        </div>
         )}
 
         <QRScannerModal

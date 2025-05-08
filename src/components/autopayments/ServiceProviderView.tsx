@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeft, Lightbulb, WifiIcon, Phone, Home, ShoppingBag, Car, Landmark, Zap, Droplet, Wifi } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Lightbulb, WifiIcon, Phone, Home, ShoppingBag, Car, Landmark, Zap, Droplet, Wifi, SearchIcon, CheckCircle, XCircle } from 'lucide-react';
 
 // Import service provider logos
 import srwbLogo from '../images/serviceprov/srwb.jpg';
@@ -20,11 +20,20 @@ interface ServiceProviderViewProps {
   internetProviderData?: InternetProvider[];
 }
 
+// New confirmation modal interface
+interface ConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  provider: ServiceProvider | null;
+}
+
 export interface ServiceProvider {
   id: string;
   name: string;
   icon: React.ReactNode;
   email: string;
+  category?: string;
 }
 
 export interface WaterUtilityProvider {
@@ -51,6 +60,13 @@ export interface InternetProvider {
   email: string;
 }
 
+// Define service categories
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+}
+
 const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({ 
   onBack, 
   onSelectProvider,
@@ -60,16 +76,31 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
   electricityProviderData = defaultElectricityProviders,
   internetProviderData = defaultInternetProviders
 }) => {
-  // Service providers data
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
+  
+  // Service categories
+  const serviceCategories: ServiceCategory[] = [
+    { id: 'utilities', name: 'Utilities', icon: <Zap size={24} className="text-yellow-500" /> },
+    { id: 'telecom', name: 'Telecom', icon: <Phone size={24} className="text-green-500" /> },
+    { id: 'housing', name: 'Housing', icon: <Home size={24} className="text-blue-500" /> },
+    { id: 'subscriptions', name: 'Subscriptions', icon: <ShoppingBag size={24} className="text-purple-500" /> },
+    { id: 'transport', name: 'Transport', icon: <Car size={24} className="text-red-500" /> },
+    { id: 'financial', name: 'Financial', icon: <Landmark size={24} className="text-cyan-500" /> },
+  ];
+
+  // Service providers data with categories
   const serviceProviders: ServiceProvider[] = [
-    { id: 'water', name: 'Water Utility', icon: <Zap size={36} className="text-blue-500" />, email: 'water@utility.com' },
-    { id: 'electricity', name: 'Electricity Company', icon: <Lightbulb size={36} className="text-yellow-500" />, email: 'billing@electricity.com' },
-    { id: 'internet', name: 'Internet Provider', icon: <WifiIcon size={36} className="text-green-500" />, email: 'payments@internet.com' },
-    { id: 'phone', name: 'Mobile Network', icon: <Phone size={36} className="text-purple-500" />, email: 'billing@mobile.com' },
-    { id: 'rent', name: 'Housing Agency', icon: <Home size={36} className="text-red-500" />, email: 'payments@housing.com' },
-    { id: 'shopping', name: 'Monthly Subscription', icon: <ShoppingBag size={36} className="text-pink-500" />, email: 'billing@subscription.com' },
-    { id: 'transport', name: 'Transport Provider', icon: <Car size={36} className="text-cyan-500" />, email: 'payments@transport.com' },
-    { id: 'loan', name: 'Loan Payment', icon: <Landmark size={36} className="text-orange-500" />, email: 'payments@loans.com' },
+    { id: 'water', name: 'Water Utility', icon: <Droplet size={36} className="text-blue-500" />, email: 'Pay your water bills', category: 'utilities' },
+    { id: 'electricity', name: 'Electricity Company', icon: <Lightbulb size={36} className="text-yellow-500" />, email: 'Pay your electricity bills', category: 'utilities' },
+    { id: 'internet', name: 'Internet Provider', icon: <WifiIcon size={36} className="text-green-500" />, email: 'Pay your internet bills', category: 'telecom' },
+    { id: 'phone', name: 'Mobile Network', icon: <Phone size={36} className="text-purple-500" />, email: 'Pay your mobile bills', category: 'telecom' },
+    { id: 'rent', name: 'Housing Agency', icon: <Home size={36} className="text-red-500" />, email: 'Pay your rent', category: 'housing' },
+    { id: 'shopping', name: 'Monthly Subscription', icon: <ShoppingBag size={36} className="text-pink-500" />, email: 'Pay your subscriptions', category: 'subscriptions' },
+    { id: 'transport', name: 'Transport Provider', icon: <Car size={36} className="text-cyan-500" />, email: 'Pay for transport services', category: 'transport' },
+    { id: 'loan', name: 'Loan Payment', icon: <Landmark size={36} className="text-orange-500" />, email: 'Pay your loan installments', category: 'financial' },
   ];
 
   const handleServiceTypeSelect = (serviceType: string) => {
@@ -78,7 +109,6 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
     }
   };
 
-  // This function helps us navigate back from a specific provider list to the main service types
   const handleBackToServiceTypes = () => {
     if (onServiceTypeSelect) {
       // Setting to null clears the selected service type
@@ -86,36 +116,118 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
     }
   };
 
+  const filterProviders = (providers: ServiceProvider[]) => {
+    // Filter by search query
+    let filtered = providers;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(provider => 
+        provider.name.toLowerCase().includes(query) || 
+        provider.email.toLowerCase().includes(query)
+      );
+    }
+    
+    // Filter by category
+    if (activeCategory) {
+      filtered = filtered.filter(provider => provider.category === activeCategory);
+    }
+    
+    return filtered;
+  };
+
+  const handleCategoryClick = (categoryId: string) => {
+    setActiveCategory(activeCategory === categoryId ? null : categoryId);
+  };
+
+  const handleProviderSelect = (provider: ServiceProvider) => {
+    setSelectedProvider(provider);
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmProvider = () => {
+    if (selectedProvider) {
+      onSelectProvider(selectedProvider);
+    }
+    setShowConfirmation(false);
+  };
+
+  const handleCancelSelection = () => {
+    setShowConfirmation(false);
+    setSelectedProvider(null);
+  };
+
   // If a service type is selected, show its specific providers
   if (selectedServiceType === 'water') {
     return (
-      <WaterUtilityProvidersView 
-        providers={waterUtilityData} 
-        onBack={handleBackToServiceTypes} 
-        onSelectProvider={onSelectProvider}
-      />
+      <>
+        <WaterUtilityProvidersView 
+          providers={waterUtilityData} 
+          onBack={handleBackToServiceTypes} 
+          onSelectProvider={handleProviderSelect}
+        />
+        {showConfirmation && selectedProvider && (
+          <ConfirmationModal 
+            isOpen={showConfirmation}
+            onClose={handleCancelSelection}
+            onConfirm={handleConfirmProvider}
+            provider={selectedProvider}
+          />
+        )}
+      </>
     );
   }
   
   if (selectedServiceType === 'electricity') {
     return (
-      <ElectricityProvidersView 
-        providers={electricityProviderData} 
-        onBack={handleBackToServiceTypes} 
-        onSelectProvider={onSelectProvider}
-      />
+      <>
+        <ElectricityProvidersView 
+          providers={electricityProviderData} 
+          onBack={handleBackToServiceTypes} 
+          onSelectProvider={handleProviderSelect}
+        />
+        {showConfirmation && selectedProvider && (
+          <ConfirmationModal 
+            isOpen={showConfirmation}
+            onClose={handleCancelSelection}
+            onConfirm={handleConfirmProvider}
+            provider={selectedProvider}
+          />
+        )}
+      </>
     );
   }
 
   if (selectedServiceType === 'internet') {
     return (
-      <InternetProvidersView 
-        providers={internetProviderData} 
+      <>
+        <InternetProvidersView 
+          providers={internetProviderData} 
+          onBack={handleBackToServiceTypes} 
+          onSelectProvider={handleProviderSelect}
+        />
+        {showConfirmation && selectedProvider && (
+          <ConfirmationModal 
+            isOpen={showConfirmation}
+            onClose={handleCancelSelection}
+            onConfirm={handleConfirmProvider}
+            provider={selectedProvider}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Check if the selected service type is one that doesn't have providers yet
+  if (selectedServiceType && ['rent', 'shopping', 'transport', 'loan', 'phone'].includes(selectedServiceType)) {
+    return (
+      <ComingSoonView 
         onBack={handleBackToServiceTypes} 
-        onSelectProvider={onSelectProvider}
+        category={selectedServiceType} 
       />
     );
   }
+  
+  const filteredProviders = filterProviders(serviceProviders);
   
   return (
     <div>
@@ -128,22 +240,128 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
           Back to Selection
         </button>
         <h3 className="font-medium text-lg text-gray-800 mt-4">Select Service Provider</h3>
-        <p className="text-sm text-gray-500">Choose a service provider to set up auto payments</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {serviceProviders.map(provider => (
+      {/* Search Bar */}
+      <div className="relative mb-6">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+          <SearchIcon size={18} className="text-gray-400" />
+        </div>
+        <input 
+          type="search"
+          className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-[#8928A4] focus:border-[#8928A4]"
+          placeholder="Search service providers..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Categories */}
+      <div className="mb-6 overflow-x-auto">
+        <div className="flex space-x-3 pb-2">
+          {serviceCategories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => handleCategoryClick(category.id)}
+              className={`flex flex-col items-center justify-center p-3 rounded-lg min-w-[80px] ${
+                activeCategory === category.id 
+                  ? 'bg-[#8928A4] text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              } transition-colors`}
+            >
+              <div className={`${activeCategory === category.id ? 'text-white' : ''}`}>
+                {category.icon}
+              </div>
+              <span className="text-xs mt-1">{category.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Service Providers Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredProviders.length > 0 ? (
+          filteredProviders.map((provider) => (
+            <button
+              key={provider.id}
+              onClick={() => {
+                // For water, electricity, internet - show specific providers
+                if (['water', 'electricity', 'internet'].includes(provider.id)) {
+                  handleServiceTypeSelect(provider.id);
+                } else {
+                  // For other service providers, show ComingSoonView
+                  handleServiceTypeSelect(provider.id);
+                }
+              }}
+              className="flex items-center p-4 border rounded-lg hover:bg-purple-50 transition-colors"
+            >
+              <div className="p-3 rounded-full bg-purple-100 mr-3">
+                {provider.icon}
+              </div>
+              <div className="text-left">
+                <h4 className="font-medium text-gray-800">{provider.name}</h4>
+                <p className="text-sm text-gray-500">{provider.email}</p>
+              </div>
+            </button>
+          ))
+        ) : (
+          <div className="col-span-full p-8 text-center">
+            <p className="text-gray-500">No service providers found. Try a different search term or category.</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Confirmation Modal */}
+      {showConfirmation && selectedProvider && (
+        <ConfirmationModal 
+          isOpen={showConfirmation}
+          onClose={handleCancelSelection}
+          onConfirm={handleConfirmProvider}
+          provider={selectedProvider}
+        />
+      )}
+    </div>
+  );
+};
+
+// Confirmation Modal Component
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, onConfirm, provider }) => {
+  if (!isOpen || !provider) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 animate-fade-in">
+        <div className="text-center mb-6">
+          <h3 className="text-xl font-semibold text-gray-800">Confirm Selection</h3>
+          <p className="text-gray-600 mt-2">Continue to iterate with this provider?</p>
+        </div>
+        
+        <div className="flex items-center justify-center mb-6 p-4 border border-gray-200 rounded-lg">
+          <div className="p-3 rounded-full bg-purple-100 mr-4">
+            {provider.icon}
+          </div>
+          <div className="text-left">
+            <h4 className="font-medium text-lg text-gray-800">{provider.name}</h4>
+            <p className="text-sm text-gray-500">{provider.email}</p>
+          </div>
+        </div>
+        
+        <div className="flex space-x-3">
           <button
-            key={provider.id}
-            onClick={() => handleServiceTypeSelect(provider.id)}
-            className="flex flex-col items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={onClose}
+            className="flex-1 flex items-center justify-center px-4 py-3 rounded-md text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
           >
-            <div className="mb-2 p-2 rounded-full bg-gray-100">
-              {provider.icon}
-            </div>
-            <span className="text-sm text-center font-medium">{provider.name}</span>
+            <XCircle size={20} className="mr-2" />
+            Cancel
           </button>
-        ))}
+          <button
+            onClick={onConfirm}
+            className="flex-1 flex items-center justify-center px-4 py-3 rounded-md text-white bg-[#8928A4] hover:bg-[#7a2391] transition-colors"
+          >
+            <CheckCircle size={20} className="mr-2" />
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -288,6 +506,85 @@ const InternetProvidersView: React.FC<InternetProvidersViewProps> = ({ providers
             </div>
           </button>
         ))}
+      </div>
+    </div>
+  );
+};
+
+// New ComingSoonView component for categories without providers yet
+interface ComingSoonViewProps {
+  onBack: () => void;
+  category: string;
+}
+
+const ComingSoonView: React.FC<ComingSoonViewProps> = ({ onBack, category }) => {
+  const getCategoryIcon = () => {
+    switch (category) {
+      case 'housing':
+        return <Home size={48} className="text-blue-500" />;
+      case 'subscriptions':
+        return <ShoppingBag size={48} className="text-purple-500" />;
+      case 'transport':
+        return <Car size={48} className="text-red-500" />;
+      case 'financial':
+        return <Landmark size={48} className="text-cyan-500" />;
+      case 'phone':
+        return <Phone size={48} className="text-purple-500" />;
+      default:
+        return <Lightbulb size={48} className="text-yellow-500" />;
+    }
+  };
+
+  const getCategoryName = () => {
+    switch (category) {
+      case 'housing':
+        return "Housing Services";
+      case 'subscriptions':
+        return "Subscription Services";
+      case 'transport':
+        return "Transportation Services";
+      case 'financial':
+        return "Financial Services";
+      case 'phone':
+        return "Mobile Network Services";
+      default:
+        return "Services";
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-6">
+        <button 
+          onClick={onBack}
+          className="flex items-center justify-center px-4 py-3 rounded-md text-[#8928A4] bg-[#f9f0fc] hover:bg-[#f3e0fa] transition-colors text-base w-full md:w-auto"
+        >
+          <ArrowLeft size={20} className="mr-2" />
+          Back to Service Types
+        </button>
+      </div>
+
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="bg-purple-100 p-6 rounded-full mb-6">
+          {getCategoryIcon()}
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">{getCategoryName()} Coming Soon</h2>
+        <p className="text-gray-600 max-w-md mb-6">
+          We're working diligently to bring you a comprehensive selection of {category.toLowerCase()} service providers. 
+          Our team is establishing partnerships to offer you seamless payment experiences.
+        </p>
+        <div className="bg-gray-100 rounded-lg p-4 mb-6 max-w-md">
+          <p className="text-sm text-gray-700">
+            <strong>What to expect:</strong> In the coming weeks, we'll be adding trusted {category.toLowerCase()} providers to our platform, 
+            allowing you to conveniently manage all your payments in one place.
+          </p>
+        </div>
+        <button
+          onClick={onBack}
+          className="px-6 py-3 bg-[#8928A4] hover:bg-[#7a2391] text-white font-medium rounded-md transition-colors"
+        >
+          Explore Other Categories
+        </button>
       </div>
     </div>
   );

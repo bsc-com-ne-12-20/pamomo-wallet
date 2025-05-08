@@ -18,6 +18,7 @@ import OtpVerification from './pages/OtpVerification';
 import Subscription from './pages/Subscription';
 import TransferComplete from './pages/TransferComplete';
 import AutoPayments from './pages/AutoPayments';
+import BillPayment from './pages/BillPayment';
 import PameraFinancialChatbot from './components/PameraFinancialChatbot';
 
 // Layout wrapper component to handle proper padding
@@ -369,6 +370,12 @@ const App = () => {
             <Route path="/auto-payments" element={
               <ProtectedRoute isAuthenticated={isAuthenticated} isVerified={isVerified}>
                 <AutoPayments username={username} onLogout={handleLogout} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/bill-payment" element={
+              <ProtectedRoute isAuthenticated={isAuthenticated} isVerified={isVerified}>
+                <BillPayment username={username} onLogout={handleLogout} />
               </ProtectedRoute>
             } />
 

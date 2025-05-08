@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Lightbulb, WifiIcon, Phone, Home, ShoppingBag, Car, Landmark, Zap, Droplet } from 'lucide-react';
+import React from 'react';
+import { ArrowLeft, Lightbulb, WifiIcon, Phone, Home, ShoppingBag, Car, Landmark, Zap, Droplet, Wifi } from 'lucide-react';
+
+// Import service provider logos
+import srwbLogo from '../images/serviceprov/srwb.jpg';
+import crwbLogo from '../images/serviceprov/crwb.jpg';
+import nrwbLogo from '../images/serviceprov/nrwb.jpg';
+import lwbLogo from '../images/serviceprov/lwb.jpg';
+import bwbLogo from '../images/serviceprov/bwb.png';
+import escomLogo from '../images/serviceprov/escom.png';
+import starlinkLogo from '../images/serviceprov/starlink.svg';
 
 interface ServiceProviderViewProps {
   onBack: () => void;
   onSelectProvider: (provider: ServiceProvider) => void;
-  onServiceTypeSelect?: (serviceType: string) => void;
+  onServiceTypeSelect?: (serviceType: string | null) => void;
   selectedServiceType?: string | null;
   waterUtilityData?: WaterUtilityProvider[];
+  electricityProviderData?: ElectricityProvider[];
+  internetProviderData?: InternetProvider[];
 }
 
 export interface ServiceProvider {
@@ -24,12 +35,30 @@ export interface WaterUtilityProvider {
   email: string;
 }
 
+export interface ElectricityProvider {
+  id: string;
+  name: string;
+  logo?: React.ReactNode;
+  coverageArea: string;
+  email: string;
+}
+
+export interface InternetProvider {
+  id: string;
+  name: string;
+  logo?: React.ReactNode;
+  serviceType: string;
+  email: string;
+}
+
 const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({ 
   onBack, 
   onSelectProvider,
   onServiceTypeSelect,
   selectedServiceType,
-  waterUtilityData = defaultWaterUtilityProviders 
+  waterUtilityData = defaultWaterUtilityProviders,
+  electricityProviderData = defaultElectricityProviders,
+  internetProviderData = defaultInternetProviders
 }) => {
   // Service providers data
   const serviceProviders: ServiceProvider[] = [
@@ -62,6 +91,26 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
     return (
       <WaterUtilityProvidersView 
         providers={waterUtilityData} 
+        onBack={handleBackToServiceTypes} 
+        onSelectProvider={onSelectProvider}
+      />
+    );
+  }
+  
+  if (selectedServiceType === 'electricity') {
+    return (
+      <ElectricityProvidersView 
+        providers={electricityProviderData} 
+        onBack={handleBackToServiceTypes} 
+        onSelectProvider={onSelectProvider}
+      />
+    );
+  }
+
+  if (selectedServiceType === 'internet') {
+    return (
+      <InternetProvidersView 
+        providers={internetProviderData} 
         onBack={handleBackToServiceTypes} 
         onSelectProvider={onSelectProvider}
       />
@@ -148,43 +197,220 @@ const WaterUtilityProvidersView: React.FC<WaterUtilityProvidersViewProps> = ({ p
   );
 };
 
+// Electricity Providers component
+interface ElectricityProvidersViewProps {
+  providers: ElectricityProvider[];
+  onBack: () => void;
+  onSelectProvider: (provider: ServiceProvider) => void;
+}
+
+const ElectricityProvidersView: React.FC<ElectricityProvidersViewProps> = ({ providers, onBack, onSelectProvider }) => {
+  return (
+    <div>
+      <div className="mb-6">
+        <button 
+          onClick={onBack}
+          className="flex items-center justify-center px-4 py-3 rounded-md text-[#8928A4] bg-[#f9f0fc] hover:bg-[#f3e0fa] transition-colors text-base w-full md:w-auto"
+        >
+          <ArrowLeft size={20} className="mr-2" />
+          Back to Service Types
+        </button>
+        <h3 className="font-medium text-lg text-gray-800 mt-4">Electricity Providers</h3>
+        <p className="text-sm text-gray-500">Choose your electricity provider</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {providers.map(provider => (
+          <button
+            key={provider.id}
+            onClick={() => onSelectProvider({
+              id: provider.id,
+              name: provider.name,
+              icon: provider.logo || <Lightbulb size={24} className="text-yellow-500" />,
+              email: provider.email
+            })}
+            className="flex items-center p-4 border rounded-lg hover:bg-yellow-50 transition-colors"
+          >
+            <div className="p-2 rounded-full bg-yellow-100 mr-3">
+              {provider.logo || <Lightbulb size={24} className="text-yellow-500" />}
+            </div>
+            <div className="text-left">
+              <span className="font-medium block">{provider.name}</span>
+              <span className="text-xs text-gray-500">{provider.coverageArea}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Internet Providers component
+interface InternetProvidersViewProps {
+  providers: InternetProvider[];
+  onBack: () => void;
+  onSelectProvider: (provider: ServiceProvider) => void;
+}
+
+const InternetProvidersView: React.FC<InternetProvidersViewProps> = ({ providers, onBack, onSelectProvider }) => {
+  return (
+    <div>
+      <div className="mb-6">
+        <button 
+          onClick={onBack}
+          className="flex items-center justify-center px-4 py-3 rounded-md text-[#8928A4] bg-[#f9f0fc] hover:bg-[#f3e0fa] transition-colors text-base w-full md:w-auto"
+        >
+          <ArrowLeft size={20} className="mr-2" />
+          Back to Service Types
+        </button>
+        <h3 className="font-medium text-lg text-gray-800 mt-4">Internet Service Providers</h3>
+        <p className="text-sm text-gray-500">Choose your internet provider</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {providers.map(provider => (
+          <button
+            key={provider.id}
+            onClick={() => onSelectProvider({
+              id: provider.id,
+              name: provider.name,
+              icon: provider.logo || <Wifi size={24} className="text-green-500" />,
+              email: provider.email
+            })}
+            className="flex items-center p-4 border rounded-lg hover:bg-green-50 transition-colors"
+          >
+            <div className="p-2 rounded-full bg-green-100 mr-3">
+              {provider.logo || <Wifi size={24} className="text-green-500" />}
+            </div>
+            <div className="text-left">
+              <span className="font-medium block">{provider.name}</span>
+              <span className="text-xs text-gray-500">{provider.serviceType}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // Default water utility providers data
 const defaultWaterUtilityProviders: WaterUtilityProvider[] = [
   { 
     id: 'lilongwe-water-board', 
     name: 'Lilongwe Water Board', 
     region: 'Lilongwe Region',
-    email: 'payments@lwb.mw' 
+    email: 'payments@lwb.mw',
+    logo: <img src={lwbLogo} alt="LWB Logo" className="h-10 w-10 object-cover rounded-full" />
   },
   { 
     id: 'blantyre-water-board', 
     name: 'Blantyre Water Board', 
     region: 'Blantyre Region',
-    email: 'billing@bwb.mw' 
+    email: 'billing@bwb.mw',
+    logo: <img src={bwbLogo} alt="BWB Logo" className="h-10 w-10 object-cover rounded-full" />
   },
   { 
     id: 'northern-region-water-board', 
     name: 'Northern Region Water Board', 
     region: 'Northern Region',
-    email: 'payments@nrwb.mw' 
+    email: 'payments@nrwb.mw',
+    logo: <img src={nrwbLogo} alt="NRWB Logo" className="h-10 w-10 object-cover rounded-full" />
   },
   { 
     id: 'central-region-water-board', 
     name: 'Central Region Water Board', 
     region: 'Central Region',
-    email: 'billing@crwb.mw' 
+    email: 'billing@crwb.mw',
+    logo: <img src={crwbLogo} alt="CRWB Logo" className="h-10 w-10 object-cover rounded-full" />
   },
   { 
     id: 'southern-region-water-board', 
     name: 'Southern Region Water Board', 
     region: 'Southern Region',
-    email: 'payments@srwb.mw' 
+    email: 'payments@srwb.mw',
+    logo: <img src={srwbLogo} alt="SRWB Logo" className="h-10 w-10 object-cover rounded-full" />
+  }
+];
+
+// Default electricity providers data
+const defaultElectricityProviders: ElectricityProvider[] = [
+  {
+    id: 'escom',
+    name: 'ESCOM - Electricity Supply Corporation of Malawi',
+    coverageArea: 'National Grid',
+    email: 'payments@escom.mw',
+    logo: <img src={escomLogo} alt="ESCOM Logo" className="h-10 w-10 object-cover rounded-full" />
   },
-  { 
-    id: 'mzuzu-water-board', 
-    name: 'Mzuzu Water Board', 
-    region: 'Mzuzu City',
-    email: 'billing@mzuzuwater.mw' 
+  {
+    id: 'egenco',
+    name: 'EGENCO - Electricity Generation Company',
+    coverageArea: 'Electricity Generation',
+    email: 'billing@egenco.mw'
+  },
+  {
+    id: 'mega-power',
+    name: 'MegaPower Solar',
+    coverageArea: 'Solar Power Solutions',
+    email: 'payments@megapower.mw'
+  },
+  {
+    id: 'rural-electrification',
+    name: 'Rural Electrification Project',
+    coverageArea: 'Rural Communities',
+    email: 'billing@rep.mw'
+  },
+  {
+    id: 'mera',
+    name: 'MERA - Malawi Energy Regulatory Authority',
+    coverageArea: 'Energy Regulation',
+    email: 'payments@mera.mw'
+  },
+  {
+    id: 'green-energy',
+    name: 'Green Energy Solutions',
+    coverageArea: 'Renewable Energy',
+    email: 'billing@greenenergy.mw'
+  }
+];
+
+// Default internet providers data
+const defaultInternetProviders: InternetProvider[] = [
+  {
+    id: 'starlink',
+    name: 'Starlink',
+    serviceType: 'Satellite Internet',
+    email: 'billing@starlink.com',
+    logo: <img src={starlinkLogo} alt="Starlink Logo" className="h-10 w-10 object-cover rounded-full" />
+  },
+  {
+    id: 'mtn-business',
+    name: 'MTN Business Internet',
+    serviceType: 'Fiber & Mobile Internet',
+    email: 'payments@mtn.mw'
+  },
+  {
+    id: 'skyband',
+    name: 'Skyband',
+    serviceType: 'Broadband & Fiber',
+    email: 'billing@skyband.mw'
+  },
+  {
+    id: 'tnm',
+    name: 'TNM Internet Services',
+    serviceType: 'Mobile & Fixed Internet',
+    email: 'payments@tnm.mw'
+  },
+  {
+    id: 'globe-internet',
+    name: 'Globe Internet',
+    serviceType: 'Wireless Internet',
+    email: 'billing@globeinternet.mw'
+  },
+  {
+    id: 'afrimax',
+    name: 'Afrimax Malawi',
+    serviceType: 'LTE & Wireless Internet',
+    email: 'payments@afrimax.mw'
   }
 ];
 

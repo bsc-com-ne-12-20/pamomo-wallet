@@ -417,6 +417,7 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
                         recipientType={selectedRecipientType || 'personal'}
                         initialEmail={selectedProvider?.email || ''}
                         initialProvider={selectedProvider?.name}
+                        serviceType={selectedServiceType}
                       />
                       
                       <div className="mt-8">

@@ -340,36 +340,6 @@ const defaultElectricityProviders: ElectricityProvider[] = [
     coverageArea: 'National Grid',
     email: 'payments@escom.mw',
     logo: <img src={escomLogo} alt="ESCOM Logo" className="h-10 w-10 object-cover rounded-full" />
-  },
-  {
-    id: 'egenco',
-    name: 'EGENCO - Electricity Generation Company',
-    coverageArea: 'Electricity Generation',
-    email: 'billing@egenco.mw'
-  },
-  {
-    id: 'mega-power',
-    name: 'MegaPower Solar',
-    coverageArea: 'Solar Power Solutions',
-    email: 'payments@megapower.mw'
-  },
-  {
-    id: 'rural-electrification',
-    name: 'Rural Electrification Project',
-    coverageArea: 'Rural Communities',
-    email: 'billing@rep.mw'
-  },
-  {
-    id: 'mera',
-    name: 'MERA - Malawi Energy Regulatory Authority',
-    coverageArea: 'Energy Regulation',
-    email: 'payments@mera.mw'
-  },
-  {
-    id: 'green-energy',
-    name: 'Green Energy Solutions',
-    coverageArea: 'Renewable Energy',
-    email: 'billing@greenenergy.mw'
   }
 ];
 

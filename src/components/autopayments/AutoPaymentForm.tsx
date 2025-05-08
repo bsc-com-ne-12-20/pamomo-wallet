@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Calendar } from 'lucide-react';
+import { Mail, Calendar, Hash } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL, TRANSACTION_LIMITS } from '../../utils/constants';
 
@@ -10,6 +10,7 @@ interface AutoPaymentFormProps {
   recipientType: 'personal' | 'service';
   initialEmail?: string;
   initialProvider?: string;
+  serviceType?: string;
 }
 
 const AutoPaymentForm: React.FC<AutoPaymentFormProps> = ({ 
@@ -18,16 +19,21 @@ const AutoPaymentForm: React.FC<AutoPaymentFormProps> = ({
   subscription, 
   recipientType,
   initialEmail = '',
-  initialProvider = ''
+  initialProvider = '',
+  serviceType = ''
 }) => {
   const [recipient, setRecipient] = useState(initialEmail);
   const [amount, setAmount] = useState('');
   const [frequency, setFrequency] = useState<'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'>('MONTHLY');
   const [startDate, setStartDate] = useState('');
   const [description, setDescription] = useState(initialProvider ? `Auto payment for ${initialProvider}` : '');
+  const [meterNumber, setMeterNumber] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
+  // Check if this is a utility service that requires a meter number
+  const isUtilityService = serviceType === 'water' || serviceType === 'electricity';
+
   const getTransactionLimit = (): number => {
     if (!subscription) return TRANSACTION_LIMITS.FREE;
     return TRANSACTION_LIMITS[subscription.plan as keyof typeof TRANSACTION_LIMITS] || TRANSACTION_LIMITS.FREE;
@@ -37,7 +43,7 @@ const AutoPaymentForm: React.FC<AutoPaymentFormProps> = ({
     e.preventDefault();
     setError('');
     
-    if (!recipient || !amount || !startDate) {
+    if (!recipient || !amount || !startDate || (isUtilityService && !meterNumber)) {
       setError('Please fill in all required fields');
       return;
     }
@@ -69,7 +75,8 @@ const AutoPaymentForm: React.FC<AutoPaymentFormProps> = ({
         next_payment_date: formattedStartDate,
         description: description,
         recipient_type: recipientType,
-        provider_name: initialProvider || undefined
+        provider_name: initialProvider || undefined,
+        meter_number: isUtilityService ? meterNumber : undefined
       };
       
       console.log('Creating auto payment with data:', payload);
@@ -97,6 +104,8 @@ const AutoPaymentForm: React.FC<AutoPaymentFormProps> = ({
           setError(`Amount: ${err.response.data.amount[0]}`);
         } else if (err.response.data.start_date) {
           setError(`Start date: ${err.response.data.start_date[0]}`);
+        } else if (err.response.data.meter_number) {
+          setError(`Meter Number: ${err.response.data.meter_number[0]}`);
         } else {
           const firstErrorKey = Object.keys(err.response.data)[0];
           if (firstErrorKey) {
@@ -157,6 +166,28 @@ const AutoPaymentForm: React.FC<AutoPaymentFormProps> = ({
                 </p>
               )}
             </div>
+
+            {isUtilityService && (
+              <div className="sm:col-span-2">
+                <label htmlFor="meterNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                  Meter Number *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Hash className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    id="meterNumber"
+                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                    placeholder="Enter meter number"
+                    value={meterNumber}
+                    onChange={(e) => setMeterNumber(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            )}
             
             <div>
               <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">

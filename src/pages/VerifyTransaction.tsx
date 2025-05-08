@@ -14,13 +14,15 @@ const VerifyTransaction: React.FC = () => {
     const queryParams = new URLSearchParams(location.search);
     const txRef = queryParams.get('tx_ref');
 
-    const savedEmail = localStorage.getItem('recipientEmail');
-    if (savedEmail) {
-      setCustomerEmail(savedEmail);
+    // Get email from the logged in user instead of recipientEmail
+    const userEmail = localStorage.getItem('email');
+
+    if (userEmail) {
+      setCustomerEmail(userEmail);
     }
 
-    if (txRef && savedEmail) {
-      verifyPayment(txRef, savedEmail);
+    if (txRef && userEmail) {
+      verifyPayment(txRef, userEmail);
     } else {
       setError('Invalid transaction reference or missing email.');
       setStatus('failed');
@@ -95,7 +97,7 @@ const VerifyTransaction: React.FC = () => {
         console.log('Updated Balance:', balanceData);
       }
 
-      localStorage.removeItem('recipientEmail');
+      // Remove depositAmount from localStorage, but don't remove email as it's still needed
       localStorage.removeItem('depositAmount');
       navigate('/dashboard');
     } catch (err) {

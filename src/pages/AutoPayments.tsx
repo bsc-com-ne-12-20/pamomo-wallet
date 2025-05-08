@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { ArrowLeft, Plus, Calendar, Clock, ArrowUpRight, Pause, Play, Trash2, Crown } from 'lucide-react';
-import Loader2 from '../components/Loader2';
+import { ArrowLeft, Crown, User, Building2 } from 'lucide-react';
 import axios from 'axios';
-import { API_BASE_URL, TRANSACTION_LIMITS } from '../utils/constants';
+import { API_BASE_URL } from '../utils/constants';
+
+// Import components
+import AutoPaymentForm from '../components/autopayments/AutoPaymentForm';
+import AutoPaymentsList from '../components/autopayments/AutoPaymentsList';
+import ServiceProviderView, { ServiceProvider } from '../components/autopayments/ServiceProviderView';
+import PaymentHistoryModal from '../components/autopayments/PaymentHistoryModal';
 
 interface AutoPaymentsProps {
   username: string;
@@ -22,6 +27,8 @@ interface AutoPayment {
   status: 'ACTIVE' | 'PAUSED' | 'CANCELLED';
   last_payment_date?: string;
   last_payment_status?: string;
+  recipient_type?: 'personal' | 'service';
+  service_provider?: string;
 }
 
 interface PaymentHistoryItem {
@@ -34,6 +41,8 @@ interface PaymentHistoryItem {
   timestamp: string;
 }
 
+type RecipientType = 'personal' | 'service';
+
 const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
   const [autoPayments, setAutoPayments] = useState<AutoPayment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +53,13 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
-  
+  const [showRecipientTypeSelection, setShowRecipientTypeSelection] = useState(true);
+  const [selectedRecipientType, setSelectedRecipientType] = useState<RecipientType | null>(null);
+  const [showServiceProviders, setShowServiceProviders] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
+  const [navigationStack, setNavigationStack] = useState<string[]>(['initial']);
+  const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null);
+
   const navigate = useNavigate();
 
   // Debug interceptor for API calls
@@ -89,7 +104,6 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
           return;
         }
 
-        // Remove duplicate /api/v1
         const response = await axios.get(`${API_BASE_URL}/autopayments/?email=${email}`);
         console.log('Auto payments fetched:', response.data);
         setAutoPayments(response.data);
@@ -141,11 +155,9 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
       const newStatus = currentStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
       const endpoint = newStatus === 'ACTIVE' ? 'resume' : 'pause';
       
-      // Correct endpoint format
       const response = await axios.post(`${API_BASE_URL}/autopayments/${id}/${endpoint}/`);
       
       if (response.status === 200) {
-        // Update the local state
         setAutoPayments(autoPayments.map(payment => 
           payment.id === id ? { ...payment, status: newStatus as 'ACTIVE' | 'PAUSED' } : payment
         ));
@@ -162,11 +174,9 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
     }
     
     try {
-      // Correct endpoint format
       const response = await axios.delete(`${API_BASE_URL}/autopayments/${id}/`);
       
       if (response.status === 200) {
-        // Remove from local state
         setAutoPayments(autoPayments.filter(payment => payment.id !== id));
       }
     } catch (err: any) {
@@ -175,38 +185,9 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
     }
   };
 
-  const formatFrequency = (frequency: string) => {
-    switch (frequency) {
-      case 'DAILY': return 'Daily';
-      case 'WEEKLY': return 'Weekly';
-      case 'BIWEEKLY': return 'Every 2 weeks';
-      case 'MONTHLY': return 'Monthly';
-      default: return frequency;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
-
-  // Add this helper function near your other formatting functions
-  const formatAmount = (amount: string | number): string => {
-    if (typeof amount === 'string') {
-      return parseFloat(amount).toFixed(2);
-    }
-    return amount.toFixed(2);
-  };
-
-  // Add function to fetch payment history for a specific auto payment
   const fetchPaymentHistory = async (paymentId: string) => {
     setLoadingHistory(true);
     try {
-      // Correct endpoint format - adjust if your backend uses a different endpoint
       const response = await axios.get(`${API_BASE_URL}/autopayments/${paymentId}/history/`);
       if (response.status === 200) {
         setPaymentHistory(response.data);
@@ -218,10 +199,63 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
     }
   };
 
-  // Add function to handle showing payment history
   const handleShowHistory = (paymentId: string) => {
     setSelectedPaymentId(paymentId);
     fetchPaymentHistory(paymentId);
+  };
+
+  const handleRecipientTypeSelect = (type: RecipientType) => {
+    setSelectedRecipientType(type);
+    setShowRecipientTypeSelection(false);
+    if (type === 'service') {
+      setShowServiceProviders(true);
+      setNavigationStack([...navigationStack, 'service-providers']);
+    } else {
+      setShowCreateForm(true);
+      setNavigationStack([...navigationStack, 'personal-form']);
+    }
+  };
+
+  const handleBackToSelection = () => {
+    const newStack = [...navigationStack];
+    const lastScreen = newStack.pop();
+    setNavigationStack(newStack);
+    
+    const currentScreen = newStack[newStack.length - 1];
+    
+    if (currentScreen === 'initial') {
+      setSelectedRecipientType(null);
+      setShowRecipientTypeSelection(true);
+      setShowServiceProviders(false);
+      setShowCreateForm(false);
+      setSelectedProvider(null);
+      setSelectedServiceType(null);
+    } else if (currentScreen === 'service-providers') {
+      setShowServiceProviders(true);
+      setShowCreateForm(false);
+      setSelectedProvider(null);
+      setSelectedServiceType(null);
+    } else if (currentScreen === 'service-type') {
+      setShowServiceProviders(true);
+      setSelectedProvider(null);
+      setShowCreateForm(false);
+    }
+  };
+
+  const handleServiceProviderSelect = (provider: ServiceProvider) => {
+    setSelectedProvider(provider);
+    setShowServiceProviders(false);
+    setShowCreateForm(true);
+    setNavigationStack([...navigationStack, 'provider-form']);
+  };
+  
+  const handleServiceTypeSelect = (serviceType: string | null) => {
+    if (serviceType === null) {
+      setSelectedServiceType(null);
+    } else {
+      setSelectedServiceType(serviceType);
+      setNavigationStack([...navigationStack, 'service-type']);
+    }
   };
 
   return (
@@ -237,7 +271,7 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
           Back to Dashboard
         </button>
         
-        {/* Change banner to show this is a premium feature */}
+        {/* Premium feature banner */}
         {subscription && subscription.plan !== 'PREMIUM' && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-center">
             <div className="mr-3 p-2 bg-yellow-100 rounded-full">
@@ -260,138 +294,157 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
           </div>
         )}
         
+        {/* Main content area */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">Auto Payments</h2>
-            
-            {/* Change button to only show for Premium users */}
-            {subscription && subscription.plan === 'PREMIUM' && (
-              <button
-                onClick={() => setShowCreateForm(!showCreateForm)}
-                className="flex items-center px-4 py-2 rounded-md bg-[#8928A4] text-white hover:bg-[#7a2391] transition-colors duration-200 shadow-sm font-medium"
-              >
-                <Plus size={16} className="mr-2" />
-                {showCreateForm ? 'Cancel' : 'Create Auto Payment'}
-              </button>
-            )}
           </div>
           
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 />
-            </div>
-          ) : error ? (
+          {error ? (
             <div className="bg-red-50 p-4 rounded-md text-red-600 mb-4">
               {error}
             </div>
           ) : (
             <>
-              {/* Only show form for Premium users */}
-              {showCreateForm && subscription && subscription.plan === 'PREMIUM' && (
-                <AutoPaymentForm 
-                  onSubmit={(newPayment) => {
-                    setAutoPayments([...autoPayments, newPayment]);
-                    setShowCreateForm(false);
-                  }}
-                  onCancel={() => setShowCreateForm(false)}
-                  subscription={subscription}
-                />
-              )}
-              
-              {/* Show payments only if premium or if has existing payments */}
-              {autoPayments.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {autoPayments.map(payment => (
-                    <div key={payment.id} className="border rounded-lg p-4 shadow-sm bg-white">
-                      {/* Existing payment card content remains the same */}
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-medium text-gray-800">{payment.recipient_name || payment.recipient_email}</h3>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          payment.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 
-                          payment.status === 'PAUSED' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {payment.status}
-                        </span>
-                      </div>
-                      
-                      <div className="text-sm text-gray-600 mb-3">
-                        <p>Amount: <span className="font-medium text-gray-800">MK{formatAmount(payment.amount)}</span></p>
-                        <div className="flex items-center mt-1">
-                          <Clock className="h-4 w-4 mr-1" />
-                          <span>Frequency: {formatFrequency(payment.frequency)}</span>
-                        </div>
-                        <div className="flex items-center mt-1">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          <span>Next payment: {formatDate(payment.next_payment_date)}</span>
-                        </div>
-                      </div>
-                      
-                      {payment.description && (
-                        <p className="text-xs text-gray-500 mb-3 border-t pt-2">{payment.description}</p>
-                      )}
-                      
-                      {/* Only allow actions for Premium users */}
-                      {subscription && subscription.plan === 'PREMIUM' ? (
-                        <div className="flex justify-end space-x-2">
-                          <button 
-                            onClick={() => handleShowHistory(payment.id)}
-                            className="p-2 rounded text-blue-600 hover:bg-blue-50"
-                          >
-                            <Clock size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleToggleStatus(payment.id, payment.status)}
-                            className={`p-2 rounded ${
-                              payment.status === 'ACTIVE' 
-                                ? 'text-yellow-600 hover:bg-yellow-50' 
-                                : 'text-green-600 hover:bg-green-50'
-                            }`}
-                          >
-                            {payment.status === 'ACTIVE' ? <Pause size={16} /> : <Play size={16} />}
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(payment.id)}
-                            className="p-2 rounded text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="border-t pt-3 mt-2">
-                          <p className="text-xs text-yellow-600 flex items-center">
-                            <Crown size={14} className="mr-1" />
-                            Upgrade to Premium to manage your auto payments
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 border rounded-md bg-gray-50">
-                  {subscription && subscription.plan === 'PREMIUM' ? (
+              {subscription && subscription.plan === 'PREMIUM' ? (
+                <>
+                  {/* Initial Selection View */}
+                  {showRecipientTypeSelection && (
                     <>
-                      <p className="text-gray-500">No auto payments set up yet.</p>
-                      <button
-                        onClick={() => setShowCreateForm(true)}
-                        className="mt-2 text-[#8928A4] hover:underline"
-                      >
-                        Create your first auto payment
-                      </button>
+                      <div className="max-w-md mx-auto">
+                        <p className="text-center text-gray-600 mb-6">Choose payment recipient type</p>
+                        
+                        <div className="space-y-4">
+                          <button
+                            onClick={() => handleRecipientTypeSelect('personal')}
+                            className="w-full bg-white border-2 border-[#8928A4] p-6 rounded-lg flex items-center text-left hover:bg-[#f9f0fc] transition-colors"
+                          >
+                            <div className="p-3 bg-[#f9f0fc] rounded-full mr-4">
+                              <User className="h-8 w-8 text-[#8928A4]" />
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-lg text-gray-800">Personal Account</h3>
+                              <p className="text-sm text-gray-500">Send recurring payments to individuals</p>
+                            </div>
+                          </button>
+                          
+                          <button
+                            onClick={() => handleRecipientTypeSelect('service')}
+                            className="w-full bg-white border-2 border-gray-300 p-6 rounded-lg flex items-center text-left hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="p-3 bg-gray-100 rounded-full mr-4">
+                              <Building2 className="h-8 w-8 text-gray-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-lg text-gray-800">Service Provider</h3>
+                              <p className="text-sm text-gray-500">Pay recurring bills and subscriptions</p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-8">
+                        <h3 className="font-medium text-lg text-gray-800 mb-4">Your Current Auto Payments</h3>
+                        <AutoPaymentsList 
+                          payments={autoPayments}
+                          loading={loading}
+                          subscription={subscription}
+                          onToggleStatus={handleToggleStatus}
+                          onDelete={handleDelete}
+                          onShowHistory={handleShowHistory}
+                        />
+                      </div>
                     </>
-                  ) : (
-                    <div className="flex flex-col items-center">
-                      <Crown size={32} className="text-yellow-500 mb-2" />
-                      <p className="text-gray-500">Auto payments are a Premium feature.</p>
-                      <button 
-                        onClick={() => navigate('/subscription')}
-                        className="mt-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-[#8928A4] text-white rounded-md shadow hover:from-purple-700 hover:to-[#7a2391] transition-all"
-                      >
-                        Upgrade to Premium
-                      </button>
+                  )}
+
+                  {/* Service Provider Selection View */}
+                  {showServiceProviders && (
+                    <>
+                      <ServiceProviderView 
+                        onBack={handleBackToSelection}
+                        onSelectProvider={handleServiceProviderSelect}
+                        onServiceTypeSelect={handleServiceTypeSelect}
+                        selectedServiceType={selectedServiceType}
+                      />
+                      
+                      <div className="mt-8">
+                        <h3 className="font-medium text-lg text-gray-800 mb-4">Your Current Auto Payments</h3>
+                        <AutoPaymentsList 
+                          payments={autoPayments}
+                          loading={loading}
+                          subscription={subscription}
+                          onToggleStatus={handleToggleStatus}
+                          onDelete={handleDelete}
+                          onShowHistory={handleShowHistory}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Personal Payment Form or Provider-specific Form */}
+                  {showCreateForm && (
+                    <div>
+                      <div className="mb-6">
+                        <button 
+                          onClick={handleBackToSelection}
+                          className="flex items-center justify-center px-4 py-3 rounded-md text-[#8928A4] bg-[#f9f0fc] hover:bg-[#f3e0fa] transition-colors text-base w-full md:w-auto"
+                        >
+                          <ArrowLeft size={20} className="mr-2" />
+                          {navigationStack[navigationStack.length - 2] === 'service-type' 
+                            ? 'Back to Providers' 
+                            : 'Back to Selection'}
+                        </button>
+                        <h3 className="font-medium text-lg text-gray-800 mt-4">
+                          {selectedProvider 
+                            ? `Set Up ${selectedProvider.name} Auto Payment` 
+                            : "Set Up Personal Auto Payment"}
+                        </h3>
+                      </div>
+
+                      <AutoPaymentForm 
+                        onSubmit={(newPayment) => {
+                          setAutoPayments([...autoPayments, newPayment]);
+                          setShowCreateForm(false);
+                          setShowRecipientTypeSelection(true);
+                          setSelectedProvider(null);
+                          setSelectedServiceType(null);
+                          setNavigationStack(['initial']);
+                        }}
+                        onCancel={() => {
+                          handleBackToSelection();
+                        }}
+                        subscription={subscription}
+                        recipientType={selectedRecipientType || 'personal'}
+                        initialEmail={selectedProvider?.email || ''}
+                        initialProvider={selectedProvider?.name}
+                      />
+                      
+                      <div className="mt-8">
+                        <h3 className="font-medium text-lg text-gray-800 mb-4">Your Current Auto Payments</h3>
+                        <AutoPaymentsList 
+                          payments={autoPayments}
+                          loading={loading}
+                          subscription={subscription}
+                          onToggleStatus={handleToggleStatus}
+                          onDelete={handleDelete}
+                          onShowHistory={handleShowHistory}
+                        />
+                      </div>
                     </div>
                   )}
+                </>
+              ) : (
+                <div className="text-center py-12 border rounded-md bg-gray-50">
+                  <div className="flex flex-col items-center">
+                    <Crown size={32} className="text-yellow-500 mb-2" />
+                    <p className="text-gray-500">Auto payments are a Premium feature.</p>
+                    <button 
+                      onClick={() => navigate('/subscription')}
+                      className="mt-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-[#8928A4] text-white rounded-md shadow hover:from-purple-700 hover:to-[#7a2391] transition-all"
+                    >
+                      Upgrade to Premium
+                    </button>
+                  </div>
                 </div>
               )}
             </>
@@ -422,7 +475,6 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
               </p>
             </div>
             
-            {/* Add premium feature highlight */}
             <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
               <div className="flex items-center mb-2">
                 <Crown size={18} className="text-purple-600 mr-2" />
@@ -435,299 +487,15 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
           </div>
         </div>
 
+        {/* Payment History Modal */}
         {selectedPaymentId && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">Payment History</h3>
-                <button 
-                  onClick={() => setSelectedPaymentId(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ×
-                </button>
-              </div>
-              
-              {loadingHistory ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 />
-                </div>
-              ) : paymentHistory.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {paymentHistory.map(history => (
-                        <tr key={history.id}>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                            {formatDate(history.timestamp)}
-                          </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                            MK{formatAmount(history.amount)}
-                          </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              history.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
-                              {history.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                            {history.error_message || "-"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  No payment history found for this auto payment.
-                </div>
-              )}
-              
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={() => setSelectedPaymentId(null)}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
+          <PaymentHistoryModal
+            onClose={() => setSelectedPaymentId(null)}
+            loading={loadingHistory}
+            history={paymentHistory}
+          />
         )}
       </div>
-    </div>
-  );
-};
-
-// Auto Payment Form Component
-interface AutoPaymentFormProps {
-  onSubmit: (payment: AutoPayment) => void;
-  onCancel: () => void;
-  subscription: any;
-}
-
-const AutoPaymentForm: React.FC<AutoPaymentFormProps> = ({ onSubmit, onCancel, subscription }) => {
-  const [recipient, setRecipient] = useState('');
-  const [amount, setAmount] = useState('');
-  const [frequency, setFrequency] = useState<'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'>('MONTHLY');
-  const [startDate, setStartDate] = useState('');
-  const [description, setDescription] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  
-  const getTransactionLimit = (): number => {
-    if (!subscription) return TRANSACTION_LIMITS.FREE;
-    return TRANSACTION_LIMITS[subscription.plan as keyof typeof TRANSACTION_LIMITS] || TRANSACTION_LIMITS.FREE;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!recipient || !amount || !startDate) {
-      setError('Please fill in all required fields');
-      return;
-    }
-    
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      setError('Please enter a valid amount');
-      return;
-    }
-    
-    if (amountNum > getTransactionLimit()) {
-      setError(`Amount exceeds your plan's transaction limit of MK${getTransactionLimit().toLocaleString()}`);
-      return;
-    }
-    
-    setLoading(true);
-    
-    try {
-      const email = localStorage.getItem('email');
-      
-      // Format the date as ISO string (YYYY-MM-DD) to match what backend expects
-      const formattedStartDate = startDate; // should already be in YYYY-MM-DD format from date input
-      
-      const payload = {
-        user_email: email,
-        recipient_email: recipient,
-        amount: amountNum,
-        frequency: frequency,
-        start_date: formattedStartDate,
-        next_payment_date: formattedStartDate, // Add this field which is required by your backend
-        description: description
-      };
-      
-      console.log('Creating auto payment with data:', payload);
-      
-      // Fix the API endpoint path to match your backend
-      const response = await axios.post(`${API_BASE_URL}/autopayments/create/`, payload);
-      
-      console.log('Auto payment creation response:', response);
-      
-      if (response.status === 201) {
-        onSubmit(response.data);
-      }
-    } catch (err: any) {
-      console.error('Auto payment creation failed:', err.response || err);
-      
-      // Handle different error response formats
-      if (err.response?.data) {
-        if (typeof err.response.data === 'string') {
-          setError(err.response.data);
-        } else if (err.response.data.message) {
-          setError(err.response.data.message);
-        } else if (err.response.data.non_field_errors) {
-          setError(err.response.data.non_field_errors.join(', '));
-        } else if (err.response.data.next_payment_date) {
-          setError(`Next Payment Date: ${err.response.data.next_payment_date[0]}`);
-        } else if (err.response.data.amount) {
-          setError(`Amount: ${err.response.data.amount[0]}`);
-        } else if (err.response.data.start_date) {
-          setError(`Start date: ${err.response.data.start_date[0]}`);
-        } else {
-          // If other field errors exist, show the first one
-          const firstErrorKey = Object.keys(err.response.data)[0];
-          if (firstErrorKey) {
-            const errorMsg = err.response.data[firstErrorKey];
-            setError(`${firstErrorKey}: ${Array.isArray(errorMsg) ? errorMsg[0] : errorMsg}`);
-          } else {
-            setError('Failed to create auto payment');
-          }
-        }
-      } else {
-        setError('Failed to create auto payment');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Calculate tomorrow's date for the min date attribute
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split('T')[0];
-  
-  return (
-    <div className="bg-gray-50 p-4 rounded-lg mb-6 border">
-      <h3 className="font-medium text-gray-800 mb-4">Create New Auto Payment</h3>
-      
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label htmlFor="recipient" className="block text-sm font-medium text-gray-700 mb-1">
-              Recipient Email *
-            </label>
-            <input
-              type="email"
-              id="recipient"
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-sm p-2 border"
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-              required
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-              Amount (MK) *
-            </label>
-            <input
-              type="number"
-              id="amount"
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-sm p-2 border"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              min="0.01"
-              step="0.01"
-              required
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Limit: MK{getTransactionLimit().toLocaleString()}
-            </p>
-          </div>
-          
-          <div>
-            <label htmlFor="frequency" className="block text-sm font-medium text-gray-700 mb-1">
-              Frequency *
-            </label>
-            <select
-              id="frequency"
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-sm p-2 border"
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value as any)}
-              required
-            >
-              <option value="DAILY">Daily</option>
-              <option value="WEEKLY">Weekly</option>
-              <option value="BIWEEKLY">Every 2 Weeks</option>
-              <option value="MONTHLY">Monthly</option>
-            </select>
-          </div>
-          
-          <div className="sm:col-span-2">
-            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date *
-            </label>
-            <input
-              type="date"
-              id="startDate"
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-sm p-2 border"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              min={minDate}
-              required
-            />
-          </div>
-          
-          <div className="sm:col-span-2">
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              Description (Optional)
-            </label>
-            <textarea
-              id="description"
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] text-sm p-2 border"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-              placeholder="e.g. Monthly rent payment"
-            />
-          </div>
-        </div>
-        
-        {error && (
-          <div className="mt-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
-            {error}
-          </div>
-        )}
-        
-        <div className="mt-4 flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-[#8928A4] rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
-            disabled={loading}
-          >
-            {loading ? 'Creating...' : 'Create Auto Payment'}
-          </button>
-        </div>
-      </form>
     </div>
   );
 };

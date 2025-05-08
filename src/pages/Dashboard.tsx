@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { SendIcon, History, PlusCircle, Eye, EyeOff, Calendar, Landmark } from 'lucide-react';
+import { SendIcon, History, PlusCircle, Eye, EyeOff, Calendar, Landmark, Banknote } from 'lucide-react';
 import verifyIcon from '../components/images/verify.png';
 import axios from 'axios';
 
@@ -315,7 +315,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
           <Link to="/withdraw" className="bg-white rounded-lg shadow-md p-3 sm:p-6 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row items-center sm:items-start">
               <div className="bg-purple-100 p-2 sm:p-3 rounded-full sm:mr-4 mb-2 sm:mb-0">
-                <p className="h-5 w-5 sm:h-6 sm:w-6 text-[#8928A4] flex items-center justify-center"><b>MK</b></p>
+                <Banknote className="h-5 w-5 sm:h-6 sm:w-6 text-[#8928A4]" />
               </div>
               <div className="text-center sm:text-left">
                 <h3 className="text-base sm:text-lg font-semibold">Withdraw Money</h3>

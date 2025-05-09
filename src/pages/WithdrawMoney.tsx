@@ -3,12 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Store, ArrowLeft, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
-import Loader2 from '../components/Loader2';
 import { 
   TRANSACTION_LIMITS, 
   WITHDRAWAL_FEE_PERCENTAGE,
   API_BASE_URL 
 } from '../utils/constants';
+
+// Import our success and confirmation modals
+import WithdrawalSuccess from '../components/WithdrawalSuccess';
+import WithdrawalConfirmationModal from '../components/WithdrawalConfirmationModal';
 
 interface WithdrawMoneyProps {
   username: string;
@@ -37,6 +40,10 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
   const [isProcessing, setIsProcessing] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionPlan | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [savedAgentCode, setSavedAgentCode] = useState('');
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -137,52 +144,56 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
     return amountNum <= limit;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    setIsProcessing(true);
 
+    // Validate inputs before showing confirmation
     if (!amount) {
       setError('Please fill in the amount field');
-      setIsProcessing(false);
       return;
     }
 
     if (!agentCode) {
       setError('Please enter the agent code');
-      setIsProcessing(false);
       return;
     }
 
     const agentCodeRegex = /^\d{6}$/;
     if (!agentCodeRegex.test(agentCode)) {
       setError('Please enter a valid 6-digit agent code');
-      setIsProcessing(false);
       return;
     }
 
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
-      setIsProcessing(false);
       return;
     }
 
     if (!checkTransactionLimit(amountNum)) {
       setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription.`);
-      setIsProcessing(false);
       return;
     }
 
     if (totalDeduction > (balance || 0)) {
       setError('Insufficient balance');
-      setIsProcessing(false);
       return;
     }
 
+    // All validations passed, show confirmation modal
+    setShowConfirmationModal(true);
+  };
+
+  const processWithdrawal = async () => {
+    setIsProcessing(true);
+    setShowConfirmationModal(false);
+
     try {
       const email = localStorage.getItem('email');
+      const amountNum = parseFloat(amount);
+      
       const response = await axios.post(`https://securemomo-middleware.onrender.com/api/v1/wtdr/`, {
         sender_email: email,
         amount: amountNum,
@@ -191,13 +202,19 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
 
       if (response.status === 200 || response.status === 201) {
         const { amount } = response.data;
-        setSuccess(`Successfully Withdrawn MK${amount}`);
+        
+        // Store current agent code for the success modal
+        setSavedAgentCode(agentCode);
+        
+        // Clear form fields
         setAmount('');
         setAgentCode('');
         
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
+        // Set data for success modal
+        setWithdrawalAmount(amount.toString());
+        
+        // Show success modal
+        setShowSuccessPopup(true);
       } else {
         setError('Transaction failed. Please try again.');
       }
@@ -208,6 +225,10 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
       setIsProcessing(false);
     }
   };
+  
+  const handleCancelWithdrawal = () => {
+    setShowConfirmationModal(false);
+  };
 
   const handleUpgradeClick = () => {
     navigate('/subscription');
@@ -216,6 +237,13 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
   const formatMwk = (amount: number): string => {
     return `MWK${amount.toLocaleString()}`;
   };
+
+  // Simple spinning loader component that matches the app's primary color
+  const SimpleLoader = () => (
+    <div className="flex justify-center items-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[#8928A4]"></div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -253,7 +281,7 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
         
         {isProcessing ? (
           <div className="bg-white rounded-lg shadow-md p-8 max-w-md mx-auto flex flex-col items-center justify-center">
-            <Loader2 />
+            <SimpleLoader />
             <p className="mt-4 text-gray-600">Processing your withdrawal...</p>
           </div>
         ) : (
@@ -365,6 +393,25 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
           </div>
         )}
       </div>
+
+      {showSuccessPopup && (
+        <WithdrawalSuccess
+          amount={withdrawalAmount}
+          agentCode={savedAgentCode}
+          onClose={() => setShowSuccessPopup(false)}
+        />
+      )}
+
+      {showConfirmationModal && (
+        <WithdrawalConfirmationModal
+          amount={amount}
+          agentCode={agentCode}
+          fee={transactionFee}
+          totalDeduction={totalDeduction}
+          onConfirm={processWithdrawal}
+          onCancel={handleCancelWithdrawal}
+        />
+      )}
     </div>
   );
 };

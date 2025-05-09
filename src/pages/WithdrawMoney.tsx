@@ -183,10 +183,10 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
 
     try {
       const email = localStorage.getItem('email');
-      const response = await axios.post(`${API_BASE_URL}/wtdr/`, {
-        email: email,
+      const response = await axios.post(`https://securemomo-middleware.onrender.com/api/v1/wtdr/`, {
+        sender_email: email,
         amount: amountNum,
-        agent_code: agentCode,
+        agentCode: agentCode,
       });
 
       if (response.status === 200 || response.status === 201) {

@@ -9,6 +9,7 @@ import {
 import QRCode from 'react-qr-code';
 import { toast } from 'react-toastify';
 import { API_BASE_URL, TRANSACTION_LIMITS } from '../utils/constants';
+import verifyIcon from '../components/images/verify.png';
 
 interface UserProfile {
   name: string;
@@ -31,19 +32,43 @@ interface SubscriptionPlan {
 interface PersonalProfileProps {
   username: string;
   onLogout: () => void;
+  isVerified?: boolean;
 }
 
 const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout }) => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<UserProfile | null>(null);
-  const [subscription, setSubscription] = useState<SubscriptionPlan | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionPlan | null>(null);  
   const [loading, setLoading] = useState(true);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);  const [isVerified, setIsVerified] = useState<boolean>(false);
   const [error, setError] = useState<{ 
     message: string; 
     needsVerification?: boolean; 
     isNotFound?: boolean 
   }>({ message: '' });
+  
+  const checkVerification = async (email: string) => {
+    try {
+      const response = await fetch('https://mtima.onrender.com/callback/check-verification/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setIsVerified(data.is_verified);
+      return data.is_verified;
+    } catch (error) {
+      console.error("Verification check failed:", error);
+      return false;
+    }
+  };
   
   const fetchUserProfile = async () => {
     try {
@@ -157,10 +182,34 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
       setSubscriptionLoading(false);
     }
   };
-
   useEffect(() => {
     fetchUserProfile();
     fetchSubscription();
+    
+    // Check verification status
+    const checkVerification = async () => {
+      const email = localStorage.getItem('email');
+      if (email) {
+        try {
+          const response = await fetch('https://mtima.onrender.com/callback/check-verification/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setIsVerified(data.is_verified);
+          }
+        } catch (error) {
+          console.error("Verification check failed:", error);
+        }
+      }
+    };
+    
+    checkVerification();
   }, []);
 
   const formatDate = (dateString: string) => {
@@ -532,9 +581,11 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
                         target.src = getAvatarByGender();
                       }}
                     />
-                  </div>
+                  </div>                  {/* Show verification icon when verified */}
                   <div className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md">
-                    <div className="bg-green-500 rounded-full w-4 h-4"></div>
+                    {isVerified ? (
+                      <img src={verifyIcon} className="w-4 h-4" alt="Verified" />
+                    ) : null}
                   </div>
                 </div>
                 <h3 className="text-xl font-semibold text-center">{userData?.name}</h3>
@@ -552,7 +603,9 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
                   </div>
                 )}
                 
-                <span className="text-purple-200 text-sm mt-2">Active Member</span>
+                <span className="text-purple-200 text-sm mt-2">
+                  {isVerified ? 'Verified Account' : 'Account Pending Verification'}
+                </span>
               </div>
 
               <div className="w-full md:w-2/3 p-6 md:p-8">

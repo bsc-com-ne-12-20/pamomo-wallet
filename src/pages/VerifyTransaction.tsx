@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, XCircle, RefreshCw, ArrowLeft } from 'lucide-react';
+import Navbar from '../components/Navbar';
+import Loader2 from '../components/Loader2';
+import { PAYMENT_API_KEY, PAYMENT_API_URL } from '../utils/constants';
 
 const VerifyTransaction: React.FC = () => {
   const navigate = useNavigate();

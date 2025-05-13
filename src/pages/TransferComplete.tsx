@@ -3,8 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import Loader2 from '../components/Loader2';
-import axios from 'axios';
-import { API_BASE_URL, PAYMENT_API_KEY, PAYMENT_API_URL } from '../utils/constants';
+import PaymentVerification from '../components/PaymentVerification';
 
 interface TransferCompleteProps {
   username: string;
@@ -20,83 +19,26 @@ const TransferComplete: React.FC<TransferCompleteProps> = ({ username, onLogout 
   const [receiverUsername, setReceiverUsername] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+  const [txRef, setTxRef] = useState<string | null>(null);  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const txRefParam = queryParams.get('tx_ref');
 
-  useEffect(() => {
-    const verifyTransfer = async () => {
-      const queryParams = new URLSearchParams(location.search);
-      const txRef = queryParams.get('tx_ref');
-
-      if (!txRef) {
-        setSuccess(false);
-        setMessage('Invalid transaction reference.');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // First verify the payment with the payment gateway
-        const verifyResponse = await fetch(`${PAYMENT_API_URL}/verify-payment/${txRef}`, {
-          method: 'GET',
-          headers: {
-            accept: 'application/json',
-            Authorization: `Bearer ${PAYMENT_API_KEY}`,
-          }
-        });
-
-        const verifyResult = await verifyResponse.json();
-
-        if (verifyResult.status !== 'success' || verifyResult.data.status !== 'success') {
-          setSuccess(false);
-          setMessage('Payment verification failed. Please try again.');
-          setIsLoading(false);
-          return;
-        }
-
-        // Extract metadata and amount from verification result
-        const metadata = verifyResult.data.metadata || {};
-        const receiverEmail = metadata.receiver_email;
-        const senderEmail = metadata.sender_email || localStorage.getItem('email');
-        const paidAmount = parseFloat(verifyResult.data.amount);
-
-        // Get transfer details from localStorage as backup
-        const storedAmount = localStorage.getItem('transferAmount') || '';
-        const storedReceiver = localStorage.getItem('transferReceiver') || '';
-        const storedReceiverUsername = localStorage.getItem('transferReceiverUsername') || '';
-
-        setAmount(storedAmount);
-        setReceiver(receiverEmail || storedReceiver);
-        setReceiverUsername(storedReceiverUsername);
-
-        // Now process the transfer through our API
-        const transferResponse = await axios.post(`${API_BASE_URL}/external-transfer/`, {
-          sender_email: senderEmail,
-          receiver_email: receiverEmail || storedReceiver,
-          amount: paidAmount,
-          payment_reference: txRef
-        });
-
-        if (transferResponse.status === 201 || transferResponse.status === 200) {
-          setSuccess(true);
-          setMessage('Transfer completed successfully!');
-        } else {
-          setSuccess(false);
-          setMessage('Transfer processing failed. Please contact support.');
-        }
-
-      } catch (error) {
-        console.error('Error processing transfer:', error);
-        setSuccess(false);
-        setMessage('An error occurred while processing your transfer.');
-      } finally {
-        setIsLoading(false);
-        // Clean up localStorage
-        localStorage.removeItem('transferAmount');
-        localStorage.removeItem('transferReceiver');
-        localStorage.removeItem('transferReceiverUsername');
-      }
-    };
-
-    verifyTransfer();
+    if (!txRefParam) {
+      setSuccess(false);
+      setMessage('Invalid transaction reference.');
+      setIsLoading(false);
+    } else {
+      setTxRef(txRefParam);
+      
+      // Get transfer details from localStorage
+      const storedAmount = localStorage.getItem('transferAmount') || '';
+      const storedReceiver = localStorage.getItem('transferReceiver') || '';
+      const storedReceiverUsername = localStorage.getItem('transferReceiverUsername') || '';
+      
+      setAmount(storedAmount);
+      setReceiver(storedReceiver);
+      setReceiverUsername(storedReceiverUsername);
+    }
   }, [location]);
 
   return (

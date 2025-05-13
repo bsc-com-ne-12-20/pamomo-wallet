@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import SendMoney from './pages/SendMoney';
 import WithdrawMoney from './pages/WithdrawMoney';
 import DepositMoney from './pages/DepositMoney';
+import ExternalWalletTransfer from './pages/ExternalWalletTransfer';
 import TransactionHistory from './pages/TransactionHistory';
 import VerifyIdentity from './pages/VerifyIdentity';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -304,13 +305,20 @@ const App = () => {
                   />
                 </ProtectedRoute>
               }
-            />
-
-            <Route
+            />            <Route
               path="/deposit"
               element={
                 <ProtectedRoute isAuthenticated={isAuthenticated}>
                   <DepositMoney username={username} onLogout={handleLogout} />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/external-transfer"
+              element={
+                <ProtectedRoute isAuthenticated={isAuthenticated}>
+                  <ExternalWalletTransfer username={username} onLogout={handleLogout} />
                 </ProtectedRoute>
               }
             />

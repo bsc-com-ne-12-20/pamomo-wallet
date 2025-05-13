@@ -1,0 +1,356 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import Navbar from '../components/Navbar';
+import { DollarSign, ArrowLeft, User, Mail, Check } from 'lucide-react';
+import Loader2 from '../components/Loader2';
+
+interface ExternalWalletTransferProps {
+  username: string;
+  onLogout: () => void;
+  setBalance?: (balance: number) => void;
+  setTransactions?: (transactions: any[]) => void;
+}
+
+const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ username, onLogout }) => {
+  const [amount, setAmount] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [error, setError] = useState('');  const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessView, setShowSuccessView] = useState(false);
+  const [transferData, setTransferData] = useState<{amount: string, recipient: string}>({amount: '', recipient: ''});
+  const navigate = useNavigate();
+  const location = useLocation();
+  const userEmail = localStorage.getItem('email') || '';
+  useEffect(() => {
+    // Check if email exists
+    if (!userEmail) {
+      setError('User email not found. Please log in again.');
+      return;
+    }
+
+    // Check for successful transfer first
+    const isTransferSuccess = localStorage.getItem('lastTransferSuccess') === 'true';
+    if (isTransferSuccess) {
+      const amount = localStorage.getItem('lastTransferAmount') || '';
+      const recipient = localStorage.getItem('lastTransferRecipient') || '';
+      setTransferData({amount, recipient});
+      setShowSuccessView(true);
+      // Clear the success flag after showing the success view
+      localStorage.removeItem('lastTransferSuccess');
+      return;
+    }
+
+    const queryParams = new URLSearchParams(location.search);
+    const txRef = queryParams.get('tx_ref');
+
+    if (txRef) {
+      const savedAmount = localStorage.getItem('externalTransferAmount');
+      const savedRecipientEmail = localStorage.getItem('externalRecipientEmail');
+
+      if (savedAmount && savedRecipientEmail) {
+        setIsLoading(true);
+        verifyPayment(txRef, savedRecipientEmail);
+      } else {
+        setError('Transaction information missing. Please try again.');
+      }
+    }
+  }, [location, userEmail]);
+
+  const verifyPayment = async (txRef: string, email: string) => {
+    try {
+      const response = await fetch(`https://api.paychangu.com/verify-payment/${txRef}`, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          Authorization: 'Bearer SEC-TEST-nqbbmKfBLjAN7F4XExoJqpJ0ut1rBV5T',
+        },
+      });
+
+      const result = await response.json();      if (result.status === 'success' && result.data.status === 'success') {
+        const deductedAmount = parseFloat(result.data.amount) * 0.97;
+        await sendPaymentDetails(email, deductedAmount);
+        setSuccess('Payment successful. Amount has been sent to the recipient.');
+        // Store successful transfer data for display
+        localStorage.setItem('lastTransferSuccess', 'true');
+        localStorage.setItem('lastTransferAmount', (deductedAmount).toFixed(2));
+        localStorage.setItem('lastTransferRecipient', email);
+        // Clean up transfer data
+        localStorage.removeItem('externalTransferAmount');
+        localStorage.removeItem('externalRecipientEmail');
+      } else {
+        setError('Transaction verification failed.');
+      }
+    } catch (err) {
+      setError('Error verifying payment. Please try again.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const sendPaymentDetails = async (email: string, amount: number) => {
+    try {
+      await fetch('https://mtima.onrender.com/api/v1/dpst', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          amount: amount.toFixed(2),
+        }),
+      });
+
+      setSuccess('Payment details processed and amount sent to recipient.');
+    } catch (err) {
+      setError('Failed to send payment details. Please try again.');
+      console.error(err);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+
+    if (!amount) {
+      setError('Please enter an amount');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!recipientEmail) {
+      setError('Please enter recipient email address');
+      setIsLoading(false);
+      return;
+    }
+
+    // Simple email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(recipientEmail)) {
+      setError('Please enter a valid email address');
+      setIsLoading(false);
+      return;
+    }
+
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Please enter a valid amount');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('https://api.paychangu.com/payment', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          Authorization: 'Bearer SEC-TEST-nqbbmKfBLjAN7F4XExoJqpJ0ut1rBV5T',
+        },
+        body: JSON.stringify({
+          currency: 'MWK',
+          amount: amountNum.toString(),
+          callback_url: 'https://pamomo-wallet.netlify.app/verifytrans',
+          return_url: 'https://pamomo-wallet.netlify.app/external-transfer',
+          metadata: {
+            recipient_email: recipientEmail,
+            sender_email: userEmail,
+            payment_type: 'external_wallet_transfer'
+          }
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.status === 'success' && result.data.checkout_url) {
+        localStorage.setItem('externalTransferAmount', amount);
+        localStorage.setItem('externalRecipientEmail', recipientEmail);
+        window.location.href = result.data.checkout_url;
+      } else {
+        setError('Transaction initiation failed. Please try again.');
+        setIsLoading(false);
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+      console.error(err);
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar username={username} onLogout={onLogout} />
+      <div className="container mx-auto px-4 py-8">
+        
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium">
+          <ArrowLeft size={16} className="mr-2" />
+          Back to Dashboard
+        </button>        {isLoading ? (
+          <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto flex flex-col items-center justify-center min-h-[300px]">
+            <Loader2 />
+            <p className="mt-4 text-gray-600 text-sm">Processing your transfer request...</p>
+          </div>
+        ) : showSuccessView ? (
+          <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check size={32} className="text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Transfer Successful!</h2>
+              <p className="text-gray-600 mb-6">Your money has been sent successfully.</p>
+              
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="flex justify-between mb-3">
+                  <span className="text-sm text-gray-500">Amount Sent:</span>
+                  <span className="font-semibold">MK {transferData.amount}</span>
+                </div>
+                <div className="flex justify-between mb-3">
+                  <span className="text-sm text-gray-500">Recipient:</span>
+                  <span className="font-semibold">{transferData.recipient}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Date:</span>
+                  <span className="font-semibold">{new Date().toLocaleDateString()}</span>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-full bg-[#8928A4] text-white py-3 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4] font-medium"
+              >
+                Back to Dashboard
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowSuccessView(false);
+                  setTransferData({amount: '', recipient: ''});
+                }}
+                className="w-full mt-3 bg-white text-[#8928A4] py-3 px-4 rounded-md border border-[#8928A4] hover:bg-[#f9f0fc] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4] font-medium"
+              >
+                Send Another Payment
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">            <h2 className="text-2xl font-bold text-gray-800 mb-6">Send Money via External Wallet</h2>
+            
+            <div className="bg-purple-50 rounded-md p-4 mb-6">
+              <p className="text-sm text-purple-700">
+                <span className="font-medium">How it works:</span> Send money to any Pamomo user directly from your external digital wallet. 
+                The recipient will receive the funds in their Pamomo account.
+              </p>
+            </div>
+
+            {/* Display the user email (non-editable) */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Your Account
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  className="pl-10 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm text-gray-600 sm:text-sm border p-2 cursor-not-allowed"
+                  value={userEmail}
+                  disabled
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                You are sending money from an external wallet
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Recipient email field */}
+              <div className="mb-4">
+                <label htmlFor="recipientEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                  Recipient Email
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="email"
+                    id="recipientEmail"
+                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                    placeholder="recipient@example.com"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Funds will be sent to this account
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+                  Amount
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <p className="text-gray-400"><b>MK</b></p>
+                  </div>
+                  <input
+                    type="number"
+                    id="amount"
+                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    min="0.01"
+                    step="0.01"
+                    required
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span>Fee: 3%</span>
+                  {amount && !isNaN(parseFloat(amount)) && (
+                    <span className="font-medium">
+                      Recipient gets: MK {(parseFloat(amount) * 0.97).toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>              {error && (
+                <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div className="mb-4 p-2 bg-green-50 text-green-500 rounded-md text-sm">
+                  {success}
+                </div>
+              )}
+              
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <p className="text-xs text-gray-500 mb-4">
+                  By clicking "Send Money", you'll be redirected to our secure payment gateway to complete the transaction using your preferred external payment method.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-[#8928A4] text-white py-3 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4] font-medium"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : 'Send Money'}
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ExternalWalletTransfer;

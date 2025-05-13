@@ -63,6 +63,9 @@ interface MobileProvider {
 }
 
 const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
+  // Define constants
+  const PAYMENT_GATEWAY_LIMIT = 1000000; // 1,000,000 MWK limit for payment gateway
+  
   const [balance, setBalance] = useState<number | null>(null);
   const [receiver, setReceiver] = useState('');
   const [receiverUsername, setReceiverUsername] = useState('');
@@ -114,9 +117,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
   const mobileProviders: MobileProvider[] = [
     { id: 'tnm-mpamba', name: 'TNM Mpamba', logo: mpambaLogo, country: 'Malawi' },
     { id: 'airtel-money', name: 'Airtel Money', logo: airtelMoneyLogo, country: 'Malawi' }
-  ];
-
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  ];  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAmount(value);
     const amountNum = parseFloat(value) || 0;
@@ -124,6 +125,45 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     setTransactionFee(fee);
     setTotalDeduction(amountNum + fee);
   };
+  
+  // Live validation for amount across all payment methods
+  useEffect(() => {
+    // Skip validation if amount is empty
+    if (!amount) {
+      setError('');
+      return;
+    }
+    
+    const amountValue = parseFloat(amount);
+    
+    // Validate amount format
+    if (isNaN(amountValue) || amountValue <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+    
+    // Validate against balance for pamomo wallet
+    if (paymentMethod === 'pamomo_wallet' && balance !== null && amountValue > balance) {
+      setError('Insufficient balance');
+      return;
+    }
+    
+    // Validate against payment gateway limit for external wallet
+    if (paymentMethod === 'external_wallet' && amountValue > PAYMENT_GATEWAY_LIMIT) {
+      setError(`Amount exceeds the payment gateway limit of MWK${PAYMENT_GATEWAY_LIMIT.toLocaleString()}`);
+      return;
+    }
+    
+    // Validate against transaction limit
+    const effectiveLimit = getEffectiveTransactionLimit(paymentMethod !== 'pamomo_wallet');
+    if (amountValue > effectiveLimit) {
+      setError(`Amount exceeds your transaction limit of MWK${effectiveLimit.toLocaleString()}`);
+      return;
+    }
+    
+    // Clear error if all validations pass
+    setError('');
+  }, [amount, balance, paymentMethod, PAYMENT_GATEWAY_LIMIT]);
 
   const handleScanQRCode = () => {
     setShowQRScanner(true);
@@ -276,19 +316,33 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     };
 
     fetchBalance();
-  }, [isVerified, navigate]);
-
-  const checkTransactionLimit = (amountNum: number): boolean => {
+  }, [isVerified, navigate]);  const checkTransactionLimit = (amountNum: number, isGatewayTx: boolean = false): boolean => {
     if (!subscription) return true;
     
     const limit = TRANSACTION_LIMITS[subscription.plan as keyof typeof TRANSACTION_LIMITS] || TRANSACTION_LIMITS.FREE;
+    
+    // When it's a gateway transaction, also check the gateway limit
+    if (isGatewayTx) {
+      return amountNum <= limit && amountNum <= PAYMENT_GATEWAY_LIMIT;
+    }
+    
     return amountNum <= limit;
   };
-
   const getTransactionLimit = (): number => {
     if (!subscription) return TRANSACTION_LIMITS.FREE;
     return TRANSACTION_LIMITS[subscription.plan as keyof typeof TRANSACTION_LIMITS] || TRANSACTION_LIMITS.FREE;
   };
+  const getEffectiveTransactionLimit = (isGatewayTx: boolean = false): number => {
+    const userLimit = getTransactionLimit();
+    
+    if (isGatewayTx) {
+      // Return the lower of the two limits
+      return Math.min(userLimit, PAYMENT_GATEWAY_LIMIT);
+    }
+    
+    return userLimit;
+  };
+    // Constant declaration moved to the top of the component
 
   const handleSubmitPamomoWallet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -308,10 +362,8 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       setError('Please enter a valid amount');
       setTimeout(() => setIsSending(false), 3000);
       return;
-    }
-
-    // Check transaction limits
-    if (!checkTransactionLimit(amountNum)) {
+    }    // Check transaction limits
+    if (!checkTransactionLimit(amountNum, false)) {
       setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
       setTimeout(() => setIsSending(false), 3000);
       return;
@@ -480,17 +532,18 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       setError('Please enter an amount');
       setTimeout(() => setIsSending(false), 3000);
       return;
-    }
-
-    const amountNum = parseFloat(amount);
+    }    const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
       setTimeout(() => setIsSending(false), 3000);
       return;
-    }
-
-    if (!checkTransactionLimit(amountNum)) {
-      setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
+    }      // Apply payment gateway limit and check plan limits
+    if (!checkTransactionLimit(amountNum, true)) {
+      if (amountNum > PAYMENT_GATEWAY_LIMIT) {
+        setError(`Amount exceeds the payment gateway limit of MWK${PAYMENT_GATEWAY_LIMIT.toLocaleString()}. Please enter a smaller amount.`);
+      } else {
+        setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
+      }
       setTimeout(() => setIsSending(false), 3000);
       return;
     }
@@ -624,8 +677,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
         setError('TNM Mpamba number must start with 08 and be 10 digits long');
         setIsSending(false);
         return;
-      }
-    } else if (mobileProvider === 'airtel-money') {
+      }    } else if (mobileProvider === 'airtel-money') {
       // Airtel Money numbers start with 09
       if (!mobileNumber.match(/^09\d{8}$/)) {
         setError('Airtel Money number must start with 09 and be 10 digits long');
@@ -639,8 +691,15 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       setIsSending(false);
       return;
     }
-
+    
     const amountNum = parseFloat(amount);
+    
+    // Check payment gateway limit
+    if (amountNum > PAYMENT_GATEWAY_LIMIT) {
+      setError(`Amount exceeds the payment gateway limit of MWK${PAYMENT_GATEWAY_LIMIT.toLocaleString()}`);
+      setIsSending(false);
+      return;
+    }
     
     // Check balance
     if (amountNum > (balance || 0)) {
@@ -697,9 +756,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       setError('Please enter an account number');
       setIsSending(false);
       return;
-    }
-
-    if (!accountName) {
+    }    if (!accountName) {
       setError('Please enter the account name');
       setIsSending(false);
       return;
@@ -712,6 +769,13 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     }
 
     const amountNum = parseFloat(amount);
+    
+    // Check payment gateway limit
+    if (amountNum > PAYMENT_GATEWAY_LIMIT) {
+      setError(`Amount exceeds the payment gateway limit of MWK${PAYMENT_GATEWAY_LIMIT.toLocaleString()}`);
+      setIsSending(false);
+      return;
+    }
     
     // Check balance
     if (amountNum > (balance || 0)) {
@@ -768,10 +832,16 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       return handleSubmitExternalPayment(e);
     }
   };
-
   // Handle payment method selection, clear localStorage to avoid showing previous transaction data
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
     setPaymentMethod(method);
+    
+    // For external wallet, redirect to the dedicated page
+    if (method === 'external_wallet') {
+      navigate('/external-transfer');
+      return;
+    }
+    
     setShowPaymentMethodSelection(false);
     setShowTransferDetails(true);
     // Reset form fields when changing payment method
@@ -941,21 +1011,22 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
 
                 {paymentMethod === 'pamomo_wallet' && (
                   <>
-                    <BalanceDisplay balance={balance} loading={loading} />
-
-                    <SendMoneyForm
+                    <BalanceDisplay balance={balance} loading={loading} />                    <SendMoneyForm
                       receiver={receiver}
                       setReceiver={setReceiver}
                       amount={amount}
                       handleAmountChange={handleAmountChange}
                       error={error}
+                      setError={setError}
                       handleSubmit={handleSubmit}
                       handleScanQRCode={handleScanQRCode}
                       transactionFee={transactionFee}
                       totalDeduction={totalDeduction}
-                      transactionLimit={getTransactionLimit()}
+                      transactionLimit={getEffectiveTransactionLimit(paymentMethod !== 'pamomo_wallet')}
                       showLimitWarning={!subscriptionLoading && !!subscription && subscription.plan !== 'PREMIUM'}
                       submitButtonText='Send from Pamomo Wallet'
+                      isPaymentGateway={paymentMethod !== 'pamomo_wallet'}
+                      balance={balance}
                     />
 
                     {subscription && subscription.plan !== 'FREE' && (
@@ -1126,9 +1197,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                           Total Cost: <span className="text-[#8928A4]">MK{totalDeduction.toFixed(2)}</span>
                         </p>
                       </div>
-                    )}
-
-                    {error && (
+                    )}                    {error && (
                       <div className="p-2 bg-red-50 text-red-500 rounded-md text-sm">
                         {error}
                       </div>
@@ -1137,6 +1206,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                     <button
                       type="submit"
                       className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                      disabled={!!error || !bankSelected || !accountNumber || parseFloat(amount) <= 0 || parseFloat(amount) > PAYMENT_GATEWAY_LIMIT}
                     >
                       Send to Bank Account
                     </button>
@@ -1234,9 +1304,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                           Total Cost: <span className="text-[#8928A4]">MK{totalDeduction.toFixed(2)}</span>
                         </p>
                       </div>
-                    )}
-
-                    {error && (
+                    )}                    {error && (
                       <div className="p-2 bg-red-50 text-red-500 rounded-md text-sm">
                         {error}
                       </div>
@@ -1245,6 +1313,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                     <button
                       type="submit"
                       className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                      disabled={!!error || !mobileProvider || !mobileNumber || parseFloat(amount) <= 0 || parseFloat(amount) > PAYMENT_GATEWAY_LIMIT}
                     >
                       Send to Mobile Money
                     </button>
@@ -1299,9 +1368,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                       <p className="text-xs text-yellow-700">
                         You'll be redirected to our secure payment gateway to complete this transaction using your preferred external wallet.
                       </p>
-                    </div>
-
-                    {error && (
+                    </div>                    {error && (
                       <div className="p-2 bg-red-50 text-red-500 rounded-md text-sm">
                         {error}
                       </div>
@@ -1310,6 +1377,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                     <button
                       type="submit"
                       className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                      disabled={!!error || parseFloat(amount) <= 0 || parseFloat(amount) > PAYMENT_GATEWAY_LIMIT}
                     >
                       Continue to Payment Gateway
                     </button>

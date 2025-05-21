@@ -1,13 +1,5 @@
 import React from "react";
-import { ShieldCheck } from 'lucide-react';
-import malawiCoatOfArms from "./images/mw_govt_logo.png";
-
-interface ButtonConfig {
-  labelText: string;
-  shape: string;
-  theme: string;
-  type: string;
-}
+import mwGovtLogo from "./images/mw_govt_logo.png";
 
 interface OidcConfig {
   acr_values: string;
@@ -19,30 +11,28 @@ interface OidcConfig {
   nonce: string;
   prompt: string;
   redirect_uri: string;
+  response_type: string;
   scope: string;
   state: string;
   ui_locales: string;
-  response_type: string;
+  requestTime?: string;
 }
 
+/**
+ * EsignetSignInButton component for National ID authentication.
+ * Using direct OIDC flow with proper requestTime parameter.
+ */
 const EsignetSignInButton: React.FC = () => {
-  const buttonConfig: ButtonConfig = {
-    labelText: "Continue with National ID",
-    shape: "soft-edges",
-    theme: "filled-orange",
-    type: "standard",
-  };
-
   const oidcConfig: OidcConfig = {
     acr_values:
       "mosip:idp:acr:generated-code mosip:idp:acr:biometrics mosip:idp:acr:static-code",
-    authorizeUri: "http://34.35.69.91:3000/authorize",
+    authorizeUri: "http://34.30.20.64:3000/authorize",
     claims_locales: "en",
-    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtjxKY",
+    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAi1FKC",
     display: "page",
     max_age: 21,
     response_type: "code",
-    nonce: "",
+    nonce: Date.now().toString(), // Generate a unique nonce for security
     prompt: "consent",
     redirect_uri: "https://mtima.onrender.com/callback/",
     scope: "openid profile",
@@ -50,20 +40,41 @@ const EsignetSignInButton: React.FC = () => {
     ui_locales: "en",
   };
 
+  /**
+   * Creates a timestamp that matches the server's expected format
+   * Based on error logs, we need to ensure the timestamp is in UTC
+   */
+  const getServerAlignedTimestamp = (): string => {
+    const now = new Date();
+    // Format the date in UTC timezone as required by the server
+    return now.toISOString();
+  };
+  
   const handleSignIn = () => {
-    const queryParams = new URLSearchParams(oidcConfig).toString();
+    // Create params with proper timestamp
+    const params: Record<string, string> = {
+      ...Object.entries(oidcConfig).reduce((acc, [key, value]) => ({
+        ...acc,
+        [key]: value?.toString() || ''
+      }), {}),
+      requestTime: getServerAlignedTimestamp()
+    };
+    
+    const queryParams = new URLSearchParams(params).toString();
     window.location.href = `${oidcConfig.authorizeUri}?${queryParams}`;
   };
 
-  return (
-    <button 
-      className="flex items-center gap-3 bg-indigo-700 text-white px-5 py-3 rounded-xl hover:bg-indigo-800 transition-colors w-full justify-center shadow-md" 
+  return (    
+    <button
       onClick={handleSignIn}
-    >
-      <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center p-1">
-        <img src={malawiCoatOfArms} alt="Malawi Coat of Arms" className="h-full w-auto" />
-      </div>
-      <b>{buttonConfig.labelText}</b>
+      className="flex items-center justify-center px-6 py-3 w-full rounded-md bg-white text-[#8928A4] border-2 border-[#8928A4] hover:bg-gray-50 font-medium transition-colors duration-200 shadow-md"
+    >      
+      <img 
+        src={mwGovtLogo} 
+        alt="Malawi Government" 
+        className="h-5 mr-3"
+      />
+      <span>Continue with National ID</span>
     </button>
   );
 };

@@ -20,7 +20,7 @@ import Subscription from './pages/Subscription';
 import TransferComplete from './pages/TransferComplete';
 import AutoPayments from './pages/AutoPayments';
 import BillPayment from './pages/BillPayment';
-import PameraFinancialChatbot from './components/PameraFinancialChatbot';
+import PamomoFinancialChatbot from './components/PamomoFinancialChatbot';
 
 // Layout wrapper component to handle proper padding
 const MainLayout: React.FC<{ children: React.ReactNode, isAuthenticated: boolean }> = ({ children, isAuthenticated }) => {
@@ -394,7 +394,7 @@ const App = () => {
         </div>
       </MainLayout>
       
-      <PameraFinancialChatbot />
+      <PamomoFinancialChatbot />
     </>
   );
 };

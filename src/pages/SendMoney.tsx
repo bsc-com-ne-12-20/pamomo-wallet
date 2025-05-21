@@ -1099,6 +1099,16 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
 
                 {paymentMethod === 'bank_transfer' && (
                   <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4 rounded-md">
+                      <div className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <p className="text-sm font-medium text-yellow-700">Coming Soon!</p>
+                      </div>
+                      <p className="text-xs text-yellow-600 mt-1">Bank Transfer feature is currently in demo mode and will be fully available soon.</p>
+                    </div>
+                    
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Select Bank</label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
@@ -1206,15 +1216,23 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                     <button
                       type="submit"
                       className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
-                      disabled={!!error || !bankSelected || !accountNumber || parseFloat(amount) <= 0 || parseFloat(amount) > PAYMENT_GATEWAY_LIMIT}
+                      disabled={!!error || !selectedBank || !accountNumber || parseFloat(amount) <= 0 || parseFloat(amount) > PAYMENT_GATEWAY_LIMIT}
                     >
                       Send to Bank Account
                     </button>
                   </form>
-                )}
-
-                {paymentMethod === 'mobile_money' && (
+                )}                {paymentMethod === 'mobile_money' && (
                   <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4 rounded-md">
+                      <div className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <p className="text-sm font-medium text-yellow-700">Coming Soon!</p>
+                      </div>
+                      <p className="text-xs text-yellow-600 mt-1">Mobile Money feature is currently in demo mode and will be fully available soon.</p>
+                    </div>
+                    
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Select Mobile Money Provider</label>
                       <div className="grid grid-cols-2 gap-3 mb-2">

@@ -184,7 +184,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     const value = e.target.value;
     setSendAmount(value);
     const amountNum = parseFloat(value) || 0;
-    const fee = amountNum * 0.03; // 3% transaction fee
+    const fee = amountNum * 0.00; // 3% transaction fee
     setTransactionFee(fee);
     setTotalDeduction(amountNum + fee);
   };
@@ -423,7 +423,7 @@ const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
             </div>
             {sendAmount && (
               <div className="mb-3 sm:mb-4 text-xs sm:text-sm text-gray-700">
-                <p>Transaction Fee: <span className="font-bold">MK{transactionFee.toFixed(2)}</span></p>
+                <p>Transaction Fee: <span className="font-bold"></span></p>
                 <p>Total Deduction: <span className="font-bold">MK{totalDeduction.toFixed(2)}</span></p>
               </div>
             )}

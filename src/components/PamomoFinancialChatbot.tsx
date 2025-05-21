@@ -110,12 +110,12 @@ const suggestedQuestions = [
   "Mobile money safety"
 ];
 
-const PameraFinancialChatbot: React.FC = () => {
+const PamomoFinancialChatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { 
-      text: "Hello! I'm Pamera, your financial education assistant. I can help you learn about budgeting, saving, digital IDs, and more. What would you like to know?",
+      text: "Hello! I'm Pamomo, your financial education assistant. I can help you learn about budgeting, saving, digital IDs, and more. What would you like to know?",
       isUser: false,
       timestamp: new Date()
     }
@@ -211,11 +211,11 @@ const PameraFinancialChatbot: React.FC = () => {
     const match = findBestMatch(query);
     
     if (match === "chatbot_name") {
-      return "My name is Pamera! I'm your financial education assistant here at Pamomo Wallet. How can I help you today?";
+      return "My name is Pamomo! I'm your financial education assistant here at Pamomo Wallet. How can I help you today?";
     }
     
     if (match === "chatbot_intro") {
-      return "I'm Pamera, your financial education assistant. I can help you learn about:\n\n• Digital ID and biometric authentication\n• Budgeting and saving strategies\n• Mobile money and digital payments\n• Financial terms and concepts\n\nJust ask me anything about these topics!";
+      return "I'm Pamomo, your financial education assistant. I can help you learn about:\n\n• Digital ID and biometric authentication\n• Budgeting and saving strategies\n• Mobile money and digital payments\n• Financial terms and concepts\n\nJust ask me anything about these topics!";
     }
     
     if (match === "greeting") {
@@ -275,7 +275,7 @@ const PameraFinancialChatbot: React.FC = () => {
           <div className="bg-[#8928A4] text-white px-4 py-3 rounded-t-lg flex justify-between items-center">
             <div className="flex items-center">
               <BookOpen size={18} className="mr-2" />
-              <h3 className="font-medium">Pamera Financial Assistant</h3>
+              <h3 className="font-medium">Pamomo Financial Assistant</h3>
             </div>
             <div className="flex items-center">
               <button 
@@ -380,4 +380,4 @@ const PameraFinancialChatbot: React.FC = () => {
   );
 };
 
-export default PameraFinancialChatbot;
+export default PamomoFinancialChatbot;

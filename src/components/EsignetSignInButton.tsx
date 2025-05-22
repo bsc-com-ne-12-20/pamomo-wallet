@@ -26,9 +26,9 @@ const EsignetSignInButton: React.FC = () => {
   const oidcConfig: OidcConfig = {
     acr_values:
       "mosip:idp:acr:generated-code mosip:idp:acr:biometrics mosip:idp:acr:static-code",
-    authorizeUri: "http://34.30.20.64:3000/authorize",
+    authorizeUri: "http://myidmw.ddns.net/authorize",
     claims_locales: "en",
-    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAi1FKC",
+    client_id: "IIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApwkDY",
     display: "page",
     max_age: 21,
     response_type: "code",

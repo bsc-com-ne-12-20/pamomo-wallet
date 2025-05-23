@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, X, ChevronDown, ChevronUp, BookOpen, Info } from 'lucide-react';
+import { Send, ChevronDown, ChevronUp, BookOpen, Info, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Navbar from '../components/Navbar';
 
 interface Message {
   text: string;
@@ -7,8 +9,9 @@ interface Message {
   timestamp: Date;
 }
 
-interface PamomoFinancialChatbotProps {
-  onClose?: () => void;
+interface FinancialSupportPageProps {
+  username: string;
+  onLogout: () => void;
 }
 
 // Financial knowledge base
@@ -114,8 +117,8 @@ const suggestedQuestions = [
   "Mobile money safety"
 ];
 
-const PamomoFinancialChatbot: React.FC<PamomoFinancialChatbotProps> = ({ onClose }) => {
-  const [isOpen, setIsOpen] = useState(!!onClose); // Open automatically if onClose is provided
+const FinancialSupportPage: React.FC<FinancialSupportPageProps> = ({ username, onLogout }) => {
+  const navigate = useNavigate();
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { 
@@ -132,15 +135,6 @@ const PamomoFinancialChatbot: React.FC<PamomoFinancialChatbotProps> = ({ onClose
       messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-  const toggleChatbot = () => {
-    if (onClose && !isOpen) {
-      // If there's an onClose function, call it instead of closing internally
-      onClose();
-    } else {
-      setIsOpen(!isOpen);
-    }
-    setIsMinimized(false);
-  };
 
   const toggleMinimize = () => {
     setIsMinimized(!isMinimized);
@@ -264,126 +258,126 @@ const PamomoFinancialChatbot: React.FC<PamomoFinancialChatbotProps> = ({ onClose
       }]);
     }, 500);
   };
-    return (
-    <div className="fixed bottom-6 right-6 z-50">
-      {!isOpen && !onClose && (
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar username={username} onLogout={onLogout} />
+
+      <div className="container mx-auto px-4 py-8 pt-20">
         <button
-          onClick={toggleChatbot}
-          className="bg-[#8928A4] text-white p-4 rounded-full shadow-lg hover:bg-[#722389] transition-colors flex items-center"
-          aria-label="Open financial assistant"
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium"
         >
-          <BookOpen size={24} />
+          <ArrowLeft size={16} className="mr-2" />
+          Back to Dashboard
         </button>
-      )}
-      
-      {isOpen && (
-        <div className="bg-white rounded-lg shadow-xl w-80 sm:w-96 flex flex-col border border-gray-200 max-h-[80vh]">
-          {/* Chatbot header */}
-          <div className="bg-[#8928A4] text-white px-4 py-3 rounded-t-lg flex justify-between items-center">
+
+        <div className="bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
-              <BookOpen size={18} className="mr-2" />
-              <h3 className="font-medium">Pamomo Financial Assistant</h3>
+              <BookOpen size={24} className="text-[#8928A4] mr-3" />
+              <h2 className="text-2xl font-bold text-gray-800">Financial Support Assistant</h2>
             </div>
-            <div className="flex items-center">
-              <button 
-                onClick={toggleMinimize} 
-                className="text-white/80 hover:text-white mr-2"
-                aria-label={isMinimized ? "Expand chatbot" : "Minimize chatbot"}
-              >
-                {isMinimized ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              </button>              <button 
-                onClick={onClose || toggleChatbot}
-                className="text-white/80 hover:text-white"
-                aria-label="Close chatbot"
-              >
-                <X size={18} />
-              </button>
+            <button
+              onClick={toggleMinimize}
+              className="text-gray-500 hover:text-[#8928A4]"
+              aria-label={isMinimized ? "Expand chat" : "Minimize chat"}
+            >
+              {isMinimized ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+            </button>
+          </div>
+
+          <div className="border rounded-lg overflow-hidden bg-gray-50">
+            {!isMinimized && (
+              <>
+                <div className="h-[400px] overflow-y-auto p-4">
+                  <div className="space-y-4">
+                    {messages.map((message, index) => (
+                      <div 
+                        key={index} 
+                        className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div 
+                          className={`max-w-[80%] p-3 rounded-lg ${
+                            message.isUser 
+                              ? 'bg-[#8928A4] text-white rounded-tr-none' 
+                              : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
+                          }`}
+                        >
+                          <p className="text-sm whitespace-pre-line">{message.text}</p>
+                          <p className={`text-xs mt-1 ${message.isUser ? 'text-purple-200' : 'text-gray-500'}`}>
+                            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messageEndRef}></div>
+                  </div>
+                </div>
+
+                {/* Suggested questions */}
+                {messages.length < 3 && (
+                  <div className="px-4 pb-3 bg-white border-t">
+                    <p className="text-xs text-gray-500 mt-3 mb-2">Try asking:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedQuestions.map((question, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleSendMessage(undefined, question)}
+                          className="bg-gray-100 hover:bg-gray-200 text-xs text-gray-700 px-3 py-1.5 rounded-full transition-colors"
+                        >
+                          {question}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Input area */}
+                <form onSubmit={handleSendMessage} className="border-t border-gray-200 p-3 bg-white flex">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Type your financial question..."
+                    className="flex-1 bg-gray-100 border-none rounded-l-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#8928A4]"
+                    aria-label="Type your financial question"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="bg-[#8928A4] text-white px-6 rounded-r-lg hover:bg-[#722389] transition-colors disabled:bg-gray-300 disabled:text-gray-500 flex items-center"
+                    aria-label="Send message"
+                  >
+                    <Send size={18} />
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+
+          {/* Financial Education Resources */}
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Financial Education Resources</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                <h4 className="font-medium text-[#8928A4] mb-2">Budgeting Basics</h4>
+                <p className="text-sm text-gray-600">Learn how to create and stick to a budget that works for your lifestyle.</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                <h4 className="font-medium text-[#8928A4] mb-2">Saving Strategies</h4>
+                <p className="text-sm text-gray-600">Discover effective ways to save money and build financial security.</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                <h4 className="font-medium text-[#8928A4] mb-2">Digital Identity</h4>
+                <p className="text-sm text-gray-600">Everything you need to know about Digital IDs and secure authentication.</p>
+              </div>
             </div>
           </div>
-          
-          {/* Chatbot content */}
-          {!isMinimized && (
-            <>
-              <div className="flex-1 p-4 overflow-y-auto max-h-96 min-h-[300px]">
-                <div className="space-y-4">
-                  {messages.map((message, index) => (
-                    <div 
-                      key={index} 
-                      className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div 
-                        className={`max-w-[80%] p-3 rounded-lg ${
-                          message.isUser 
-                            ? 'bg-[#8928A4] text-white rounded-tr-none' 
-                            : 'bg-gray-100 text-gray-800 rounded-tl-none'
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-line">{message.text}</p>
-                        <p className={`text-xs mt-1 ${message.isUser ? 'text-purple-200' : 'text-gray-500'}`}>
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={messageEndRef}></div>
-                </div>
-              </div>
-              
-              {/* Suggested questions */}
-              {messages.length < 3 && (
-                <div className="px-4 pb-3">
-                  <p className="text-xs text-gray-500 mb-2">Try asking:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {suggestedQuestions.map((question, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSendMessage(undefined, question)}
-                        className="bg-gray-100 hover:bg-gray-200 text-xs text-gray-700 px-2 py-1 rounded-full transition-colors"
-                      >
-                        {question}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Digital ID promotion */}
-              {messages.length === 1 && (
-                <div className="px-4 pb-3"> 
-                  <div className="bg-purple-100 p-3 rounded-md border border-purple-300 flex items-start">
-                    <Info size={18} className="text-purple-700 mt-0.5 mr-2 shrink-0" />
-                    <p className="text-sm text-purple-900 font-medium">
-                      Did you know you can use a Digital ID linked to your National ID for identity verification? Ask me about it!
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Input area */}
-              <form onSubmit={handleSendMessage} className="border-t border-gray-200 p-3 flex">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask me about financial topics..."
-                  className="flex-1 bg-gray-100 border-none rounded-l-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-[#8928A4] text-sm"
-                  aria-label="Type your financial question"
-                />
-                <button
-                  type="submit"
-                  disabled={!input.trim()}
-                  className="bg-[#8928A4] text-white px-4 rounded-r-lg hover:bg-[#722389] transition-colors disabled:bg-gray-300 disabled:text-gray-500"
-                  aria-label="Send message"
-                >
-                  <Send size={18} />
-                </button>
-              </form>
-            </>
-          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
 
-export default PamomoFinancialChatbot;
+export default FinancialSupportPage;

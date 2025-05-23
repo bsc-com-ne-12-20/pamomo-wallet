@@ -20,7 +20,8 @@ import Subscription from './pages/Subscription';
 import TransferComplete from './pages/TransferComplete';
 import AutoPayments from './pages/AutoPayments';
 import BillPayment from './pages/BillPayment';
-import PamomoFinancialChatbot from './components/PamomoFinancialChatbot';
+import FinancialSupport from './pages/FinancialSupport';
+import QRCodeScanner from './components/QRCodeScanner';
 
 // Layout wrapper component to handle proper padding
 const MainLayout: React.FC<{ children: React.ReactNode, isAuthenticated: boolean }> = ({ children, isAuthenticated }) => {
@@ -379,11 +380,15 @@ const App = () => {
               <ProtectedRoute isAuthenticated={isAuthenticated} isVerified={isVerified}>
                 <AutoPayments username={username} onLogout={handleLogout} />
               </ProtectedRoute>
-            } />
-
-            <Route path="/bill-payment" element={
+            } />            <Route path="/bill-payment" element={
               <ProtectedRoute isAuthenticated={isAuthenticated} isVerified={isVerified}>
                 <BillPayment username={username} onLogout={handleLogout} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/financial-support" element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <FinancialSupport username={username} onLogout={handleLogout} />
               </ProtectedRoute>
             } />
 
@@ -391,10 +396,13 @@ const App = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
           </Routes>
-        </div>
-      </MainLayout>
+        </div>      </MainLayout>
       
-      <PamomoFinancialChatbot />
+      <QRCodeScanner onScan={(result) => {
+        // Handle QR code scan result here
+        console.log("QR Code scanned:", result);
+        // You can add additional logic here to handle different types of QR codes
+      }} />
     </>
   );
 };

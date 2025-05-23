@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Store, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Store, ArrowLeft, AlertTriangle, QrCode } from 'lucide-react';
 import axios from 'axios';
 import { 
   TRANSACTION_LIMITS, 
@@ -12,6 +12,8 @@ import {
 // Import our success and confirmation modals
 import WithdrawalSuccess from '../components/WithdrawalSuccess';
 import WithdrawalConfirmationModal from '../components/WithdrawalConfirmationModal';
+import QRScannerModal from '../components/sendmoney/QRScannerModal';
+import AgentCodeConfirmationModal from '../components/AgentCodeConfirmationModal';
 
 interface WithdrawMoneyProps {
   username: string;
@@ -44,6 +46,10 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [savedAgentCode, setSavedAgentCode] = useState('');
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [showAgentCodeConfirmation, setShowAgentCodeConfirmation] = useState(false);
+  const [scannedAgentCode, setScannedAgentCode] = useState('');
+  const [isVerifyingAgentCode, setIsVerifyingAgentCode] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -93,9 +99,7 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
       if (!isVerified) {
         navigate('/verify');
         return;
-      }
-
-      try {
+      }      try {
         const response = await fetch(`${API_BASE_URL}/accounts/get-balance/`, {
           method: 'POST',
           headers: {
@@ -110,8 +114,8 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
 
         const data = await response.json();
         setBalance(data.balance);
-      } catch (err) {
-        setError(err.message);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch balance');
       } finally {
         setLoading(false);
       }
@@ -185,7 +189,6 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
     // All validations passed, show confirmation modal
     setShowConfirmationModal(true);
   };
-
   const processWithdrawal = async () => {
     setIsProcessing(true);
     setShowConfirmationModal(false);
@@ -217,9 +220,20 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
         setShowSuccessPopup(true);
       } else {
         setError('Transaction failed. Please try again.');
+      }    
+    } catch (err: any) {
+      // Handle specific error status codes
+      if (err.response) {
+        if (err.response.status === 404) {
+          setError('Agent code not found. Please verify the code and try again.');
+        } else if (err.response?.data?.non_field_errors) {
+          setError(err.response.data.non_field_errors);
+        } else {
+          setError('An error occurred while processing your withdrawal. Please try again.');
+        }
+      } else {
+        setError('Network error. Please check your connection and try again.');
       }
-    } catch (err) {
-      setError(err.response?.data?.non_field_errors || 'An error occurred. Please try again.');
       console.error(err);
     } finally {
       setIsProcessing(false);
@@ -244,6 +258,51 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
       <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[#8928A4]"></div>
     </div>
   );
+
+  // Handle QR code scanning
+  const handleScanQRCode = () => {
+    setShowQRScanner(true);
+  };
+  
+  // Handle the QR scan result
+  const handleScanResult = (result: string | null) => {
+    if (result) {
+      // Extract the agent code from the result
+      // Assuming QR code directly contains the 6-digit agent code
+      const agentCodeRegex = /^\d{6}$/;
+      if (agentCodeRegex.test(result)) {
+        setScannedAgentCode(result);
+        setShowQRScanner(false);
+        setShowAgentCodeConfirmation(true);
+      } else {
+        setError('Invalid agent code format in QR code');
+        setShowQRScanner(false);
+      }
+    }
+  };
+
+  // Handle image upload for QR scanning
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Process the image (in a real app, this would use a QR code library to decode)
+      console.log("QR code image uploaded:", file.name);
+      // For demo purposes, just close the modal
+      setShowQRScanner(false);
+    }
+  };
+
+  // Confirm the scanned agent code
+  const confirmAgentCode = () => {
+    setAgentCode(scannedAgentCode);
+    setShowAgentCodeConfirmation(false);
+  };
+
+  // Cancel the scanned agent code
+  const cancelAgentCode = () => {
+    setScannedAgentCode('');
+    setShowAgentCodeConfirmation(false);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -299,8 +358,7 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
                 <p className="text-xl font-bold text-[#8928A4]">MK{balance?.toLocaleString()}</p>
               </div>
             )}
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
+            <form onSubmit={handleSubmit}>              <div className="mb-4">
                 <label htmlFor="agentCode" className="block text-sm font-medium text-gray-700 mb-1">
                   Agent Code
                 </label>
@@ -311,16 +369,23 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
                   <input
                     type="text"
                     id="agentCode"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                    className="pl-10 pr-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
                     placeholder="Enter 6-digit agent code"
                     value={agentCode}
                     onChange={(e) => setAgentCode(e.target.value)}
                     maxLength={6}
                     pattern="\d{6}"
                   />
+                  <button
+                    type="button"
+                    onClick={handleScanQRCode}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#8928A4] hover:text-[#7a2391]"
+                  >
+                    <QrCode size={20} />
+                  </button>
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  Enter the 6-digit code provided by the agent
+                  Enter the 6-digit code provided by the agent or scan QR code
                 </p>
               </div>
               
@@ -410,6 +475,23 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
           totalDeduction={totalDeduction}
           onConfirm={processWithdrawal}
           onCancel={handleCancelWithdrawal}
+        />
+      )}      {showQRScanner && (
+        <QRScannerModal
+          show={showQRScanner}
+          onClose={() => setShowQRScanner(false)}
+          onScanResult={handleScanResult}
+          handleImageUpload={handleImageUpload}
+        />
+      )}
+
+      {showAgentCodeConfirmation && (
+        <AgentCodeConfirmationModal
+          show={showAgentCodeConfirmation}
+          agentCode={scannedAgentCode}
+          onConfirm={confirmAgentCode}
+          onCancel={cancelAgentCode}
+          isLoading={isVerifyingAgentCode}
         />
       )}
     </div>

@@ -21,7 +21,6 @@ import TransferComplete from './pages/TransferComplete';
 import AutoPayments from './pages/AutoPayments';
 import BillPayment from './pages/BillPayment';
 import FinancialSupport from './pages/FinancialSupport';
-import QRCodeScanner from './components/QRCodeScanner';
 
 // Layout wrapper component to handle proper padding
 const MainLayout: React.FC<{ children: React.ReactNode, isAuthenticated: boolean }> = ({ children, isAuthenticated }) => {
@@ -147,11 +146,17 @@ const App = () => {
       setUsername('');
       setIsVerified(false);
       setIsOtpVerified(false);
+      
+      // Clear all authentication data from localStorage
       localStorage.removeItem('authToken');
       localStorage.removeItem('email');
       localStorage.removeItem('username');
       localStorage.removeItem('otpVerified');
       localStorage.removeItem('isAuthenticated');
+      
+      // Clear all OTP-related cache data
+      clearOtpCache();
+      
       window.location.href = '/login'; // Redirect to login
     };
 
@@ -172,6 +177,25 @@ const App = () => {
       };
     }
   }, [isAuthenticated]);
+  // Utility function to clear all OTP/2FA related caches
+  const clearOtpCache = () => {
+    // Clear all 2FA/OTP related data from localStorage
+    localStorage.removeItem('is2FAEnabled');
+    localStorage.removeItem('pre_2fa_user_id');
+    localStorage.removeItem('otpVerified');
+    
+    // Also clear from sessionStorage
+    sessionStorage.removeItem('is2FAEnabled');
+    sessionStorage.removeItem('pre_2fa_user_id');
+    sessionStorage.removeItem('otpVerified');
+    
+    // Clear any cookies that might be related to OTP
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+  };
 
   const handleLogin = (user: string, token: string) => {
     setIsAuthenticated(true);
@@ -187,23 +211,36 @@ const App = () => {
     setUsername('');
     setIsVerified(false);
     setIsOtpVerified(false);
+    
+    // Clear all authentication data from localStorage
     localStorage.removeItem('authToken');
     localStorage.removeItem('email');
     localStorage.removeItem('username');
     localStorage.removeItem('otpVerified');
     localStorage.removeItem('isAuthenticated');
+    
+    // Clear all OTP-related cache data
+    clearOtpCache();
+    
     window.location.href = '/login'; // Redirect to login
   };
 
   const handleVerify = () => {
     setIsVerified(true);
   };
-
   const handleOtpSuccess = () => {
     setIsOtpVerified(true);
     setIsAuthenticated(true);
-    localStorage.setItem('otpVerified', 'true');
+    
+    // Use sessionStorage for OTP verification to prevent persistent caching issues
+    // This ensures OTP verification state is cleared when browser is closed
+    sessionStorage.setItem('otpVerified', 'true');
     localStorage.setItem('isAuthenticated', 'true');
+    
+    // Since OTP was successfully verified, 2FA must be enabled
+    // Ensure this is reflected in both storage mechanisms
+    localStorage.setItem('is2FAEnabled', 'true');
+    sessionStorage.setItem('is2FAEnabled', 'true');
   };
 
   const handleSendMoney = (receiver: string, amount: number) => {
@@ -247,11 +284,15 @@ const App = () => {
   return (
     <>
       <MainLayout isAuthenticated={isAuthenticated}>
-        <div className="w-full h-full overflow-y-auto">
-          <Routes>
+        <div className="w-full h-full overflow-y-auto">          <Routes>
             <Route
               path="/login"
               element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />}
+            />
+            
+            <Route
+              path="/otp-fix"
+              element={<Navigate to="/otp-fix.html" />}
             />
 
             <Route path="/register" element={<Register onRegister={handleRegister} />} />
@@ -313,13 +354,11 @@ const App = () => {
                   <DepositMoney username={username} onLogout={handleLogout} />
                 </ProtectedRoute>
               }
-            />
-
-            <Route
+            />            <Route
               path="/external-transfer"
               element={
                 <ProtectedRoute isAuthenticated={isAuthenticated}>
-                  <ExternalWalletTransfer username={username} onLogout={handleLogout} />
+                  <ExternalWalletTransfer onLogout={handleLogout} />
                 </ProtectedRoute>
               }
             />
@@ -394,16 +433,8 @@ const App = () => {
 
             <Route path="*" element={<Navigate to="/login" />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-          </Routes>
-        </div>      </MainLayout>        <QRCodeScanner 
-        isAuthenticated={isAuthenticated} 
-        isVerified={isVerified} 
-        onScan={(result) => {
-          // Result handling is now managed inside QRCodeScanner component 
-          // which detects emails (for SendMoney) and agent codes (for WithdrawMoney)
-          console.log("QR Code scanned:", result);
-        }} />
+            <Route path="/reset-password" element={<ResetPassword />} />          </Routes>
+        </div>      </MainLayout>
     </>
   );
 };

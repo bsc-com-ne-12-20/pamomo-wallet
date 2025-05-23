@@ -41,8 +41,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, isAuthenticated, 
     } else if (error) {
       console.error('QR Scan Error:', error);
     }
-  };
-    const processScannedResult = (text: string) => {
+  };    const processScannedResult = (text: string) => {
     // Email regex pattern
     const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     
@@ -50,8 +49,21 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, isAuthenticated, 
     const agentCodePattern = /^\d{6}$/;
     
     if (emailPattern.test(text)) {
-      // If it's an email, navigate to send money page with pre-filled recipient
-      navigate('/send', { state: { recipient: text } });
+      // Check if we're on the external wallet transfer page
+      const isOnExternalWalletPage = window.location.pathname.includes('/external-transfer');
+      
+      if (isOnExternalWalletPage) {
+        // If on external wallet page and scanning an email, ask if user wants to send from Pamomo wallet instead
+        if (window.confirm('Scanning an email address. Would you like to send money from your Pamomo wallet instead of an external wallet?')) {
+          navigate('/send', { state: { recipient: text } });
+        } else {
+          // User chose to stay on external wallet page, so update the current page with the scanned email
+          navigate('/external-transfer', { state: { recipient: text } });
+        }
+      } else {
+        // Standard behavior - navigate to send money with pre-filled recipient
+        navigate('/send', { state: { recipient: text } });
+      }
     } else if (agentCodePattern.test(text)) {
       // If it's a 6-digit code, navigate to withdraw money with pre-filled agent code
       navigate('/withdraw', { state: { agentCode: text } });

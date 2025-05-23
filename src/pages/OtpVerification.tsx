@@ -13,9 +13,12 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({ handleOtpSuccess }) =
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-
-  const pre_2fa_user_id = location.state?.pre_2fa_user_id || localStorage.getItem('pre_2fa_user_id');
-  const email = location.state?.email || localStorage.getItem('email');
+  const pre_2fa_user_id = location.state?.pre_2fa_user_id || 
+                          sessionStorage.getItem('pre_2fa_user_id') || 
+                          localStorage.getItem('pre_2fa_user_id');
+  const email = location.state?.email || 
+               sessionStorage.getItem('email') || 
+               localStorage.getItem('email');
 
   // Handle OTP input change
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
@@ -56,19 +59,22 @@ const handleOtpSubmit = async (e: React.FormEvent) => {
       pre_2fa_user_id: Number(pre_2fa_user_id),
     });
 
-    const data = response.data;
-
-    if (data?.token) {
+    const data = response.data;    if (data?.token) {
       // Store auth token in localStorage
       localStorage.setItem('authToken', data.token);
-      localStorage.removeItem('pre_2fa_user_id');
       localStorage.setItem('email', email);
+      localStorage.setItem('isAuthenticated', 'true');
+      
+      // Make sure to store the 2FA status in localStorage as well for consistency
+      // This ensures the Security page will correctly show 2FA as enabled
+      localStorage.setItem('is2FAEnabled', 'true');
+      
+      // Clean up OTP-related data from both localStorage and sessionStorage
+      localStorage.removeItem('pre_2fa_user_id');
+      sessionStorage.removeItem('pre_2fa_user_id');
       
       // Call the success handler to update the state in parent components
       handleOtpSuccess();
-      
-      // Set an additional flag to indicate authentication is complete
-      localStorage.setItem('isAuthenticated', 'true');
       
       // Navigate to dashboard with replace to prevent back navigation to OTP page
       navigate('/dashboard', { replace: true });

@@ -14,12 +14,54 @@ const Security: React.FC = () => {
   const [totpUri, setTotpUri] = useState(''); // State to store the TOTP URI
   const [instructions, setInstructions] = useState(''); // State to store the instructions
   const [showConfirmationModal, setShowConfirmationModal] = useState(false); // State for confirmation modal
-  const navigate = useNavigate();
+  const navigate = useNavigate();  
 
-  // Check 2FA status from local storage on component mount
+  // Function to sync 2FA status across storage mechanisms
+  const sync2FAStatus = (isEnabled: boolean) => {
+    if (isEnabled) {
+      localStorage.setItem('is2FAEnabled', 'true');
+      sessionStorage.setItem('is2FAEnabled', 'true');
+    } else {
+      localStorage.removeItem('is2FAEnabled');
+      sessionStorage.removeItem('is2FAEnabled');
+      localStorage.removeItem('otpVerified');
+      sessionStorage.removeItem('otpVerified');
+    }
+    setIs2FAEnabled(isEnabled);
+  };
+
+  // Check 2FA status from both local storage and session storage on component mount
   useEffect(() => {
-    const stored2FAStatus = localStorage.getItem('is2FAEnabled') === 'true';
-    setIs2FAEnabled(stored2FAStatus);
+    // Check for 2FA-related indicators across different storage mechanisms
+    const indicators = [
+      // Direct 2FA enabled flags
+      localStorage.getItem('is2FAEnabled') === 'true',
+      sessionStorage.getItem('is2FAEnabled') === 'true',
+      
+      // OTP verification indicators (if OTP was verified, 2FA must be enabled)
+      localStorage.getItem('otpVerified') === 'true',
+      sessionStorage.getItem('otpVerified') === 'true',
+      
+      // Pre-2FA user ID presence can indicate 2FA is in process or was enabled
+      !!localStorage.getItem('pre_2fa_user_id'),
+      !!sessionStorage.getItem('pre_2fa_user_id')
+    ];
+    
+    // If any indicator suggests 2FA is enabled, set the state accordingly
+    const is2FAEnabled = indicators.some(indicator => indicator);
+    setIs2FAEnabled(is2FAEnabled);
+    
+    // Ensure consistent storage state
+    if (is2FAEnabled) {
+      localStorage.setItem('is2FAEnabled', 'true');
+      sessionStorage.setItem('is2FAEnabled', 'true');
+    }
+    
+    console.log('2FA Status Check:', {
+      localStorage: localStorage.getItem('is2FAEnabled') === 'true',
+      sessionStorage: sessionStorage.getItem('is2FAEnabled') === 'true',
+      finalStatus: is2FAEnabled
+    });
   }, []);
 
   const handleChangePassword = (e: React.FormEvent) => {
@@ -45,7 +87,6 @@ const Security: React.FC = () => {
       setConfirmPassword('');
     }, 1000);
   };
-
   const handleEnable2FA = async () => {
     setError('');
     setSuccess('');
@@ -65,10 +106,12 @@ const Security: React.FC = () => {
 
       if (response.status === 200) {
         const data = response.data;
-        setIs2FAEnabled(true);
         setTotpUri(data.totp_uri); // Store the TOTP URI
         setInstructions(data.instructions); // Store the instructions
-        localStorage.setItem('is2FAEnabled', 'true'); // Update 2FA status in local storage
+        
+        // Use the sync function to ensure consistent status across storage
+        sync2FAStatus(true);
+        
         setSuccess('2FA enabled successfully!');
       } else {
         setError('Failed to enable 2FA. Please try again.');
@@ -77,9 +120,7 @@ const Security: React.FC = () => {
       console.error('Error enabling 2FA:', err);
       setError('An error occurred while enabling 2FA. Please try again.');
     }
-  };
-
-  const handleDisable2FA = async () => {
+  };  const handleDisable2FA = async () => {
     setError('');
     setSuccess('');
 
@@ -96,11 +137,16 @@ const Security: React.FC = () => {
 
       if (response.status === 200) {
         const data = response.data;
-        setIs2FAEnabled(false); // Update the state to reflect that 2FA is disabled
-        localStorage.setItem('is2FAEnabled', 'false'); // Update 2FA status in local storage
-        setSuccess(data.message); // Display the success message from the response
+        
+        // Use the sync function to disable 2FA status consistently
+        sync2FAStatus(false);
+        
+        // Clear QR code data
         setTotpUri(''); // Clear the TOTP URI
         setInstructions(''); // Clear the instructions
+        
+        // Show success message from the response
+        setSuccess(data.message);
       } else {
         setError('Failed to disable 2FA. Please try again.');
       }

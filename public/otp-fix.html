@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clear OTP Cache - Pamomo Wallet</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .btn-primary {
+      background-color: #8928A4;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #7a2391;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+    <div class="text-center mb-8">
+      <div class="flex justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#8928A4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hexagon">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        </svg>
+      </div>
+      <h2 class="mt-4 text-3xl font-extrabold text-gray-900">Pamomo</h2>
+      <p class="mt-1 text-center text-sm text-gray-600">Secure Digital Wallet</p>
+    </div>
+    
+    <h1 class="text-2xl font-bold text-gray-900 mb-4">OTP Login Fix</h1>
+    
+    <div class="bg-blue-50 text-blue-800 p-4 rounded-md mb-6">
+      <p class="text-sm">
+        If you're experiencing issues with OTP verification even after disabling it, use the button below to clear your browser's OTP cache.
+      </p>
+    </div>
+    
+    <div class="space-y-6">
+      <div>
+        <h2 class="text-lg font-medium text-gray-900 mb-2">What this does:</h2>
+        <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+          <li>Clears all stored OTP settings from your browser</li>
+          <li>Removes any cached 2FA authentication data</li>
+          <li>Allows you to log in with your regular password</li>
+        </ul>
+      </div>
+      
+      <button id="clearCacheBtn" class="w-full py-3 px-4 rounded-md btn-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-medium">
+        Clear OTP Cache
+      </button>
+      
+      <div>
+        <p class="text-xs text-gray-500 mt-2">
+          Note: You will be logged out and redirected to the login page.
+        </p>
+      </div>
+      
+      <div class="text-center mt-6">
+        <a href="/login" class="text-sm text-indigo-600 hover:text-indigo-500">
+          Return to login page
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/clear-otp-cache.js"></script>
+  <script>
+    document.getElementById('clearCacheBtn').addEventListener('click', function() {
+      // Load the script again to execute it when button is clicked
+      var script = document.createElement('script');
+      script.src = '/clear-otp-cache.js';
+      document.body.appendChild(script);
+    });
+  </script>
+</body>
+</html>

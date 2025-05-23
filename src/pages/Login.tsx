@@ -41,13 +41,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       console.log("Response Data:", response.data);
     
       const data = response.data;
-    
       if (data?.['2fa_required']) {
         const pre2faUserId = data['pre_2fa_user_id'];
         if (pre2faUserId) {
+          // Use sessionStorage instead of localStorage for OTP-related data
+          // This ensures it's cleared when the browser is closed
+          sessionStorage.setItem('email', email);
+          sessionStorage.setItem('pre_2fa_user_id', pre2faUserId);
+          sessionStorage.setItem('is2FAEnabled', 'true');
+          
+          // Store minimal data in localStorage
           localStorage.setItem('email', email);
-          localStorage.setItem('pre_2fa_user_id', pre2faUserId);
-          localStorage.setItem('is2FAEnabled', 'true');
+          
           navigate('/otp-verification', {
             state: {
               email,
@@ -163,10 +168,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <Link to="/register" className="text-[#8928A4] hover:text-[#7a2391] font-medium">
                 Sign up
               </Link>
-            </div>
-            <div className="text-center text-sm">
+            </div>            <div className="text-center text-sm">
               <Link to="/forgot-password" className="text-[#8928A4] hover:text-[#7a2391] font-medium">
                 Forgot Password?
+              </Link>
+            </div>
+            <div className="text-center text-sm mt-2">
+              <Link to="/otp-fix" className="text-gray-600 hover:text-gray-800 text-xs">
+                Having issues with OTP login?
               </Link>
             </div>
           </form>

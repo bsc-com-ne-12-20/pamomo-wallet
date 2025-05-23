@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { DollarSign, ArrowLeft, User, Mail, Check } from 'lucide-react';
+import { ArrowLeft, User, Mail, Check, AlertCircle } from 'lucide-react';
 import Loader2 from '../components/Loader2';
 
+// Maximum transaction limit in MWK
+const MAX_TRANSACTION_LIMIT = 1200000;
+
 interface ExternalWalletTransferProps {
-  username: string;
   onLogout: () => void;
   setBalance?: (balance: number) => void;
   setTransactions?: (transactions: any[]) => void;
 }
 
-const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ username, onLogout }) => {
+const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogout }) => {
   const [amount, setAmount] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [error, setError] = useState('');  const [success, setSuccess] = useState('');
@@ -21,6 +23,16 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ usernam
   const navigate = useNavigate();
   const location = useLocation();
   const userEmail = localStorage.getItem('email') || '';
+  
+  // Check for recipient email in location state (from QR code scan)
+  useEffect(() => {
+    const state = location.state as { recipient?: string } | undefined;
+    if (state?.recipient) {
+      setRecipientEmail(state.recipient);
+      // Clear the location state to prevent reapplying on refresh
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
   useEffect(() => {
     // Check if email exists
     if (!userEmail) {
@@ -132,11 +144,16 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ usernam
       setError('Please enter a valid email address');
       setIsLoading(false);
       return;
-    }
-
-    const amountNum = parseFloat(amount);
+    }    const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
+      setIsLoading(false);
+      return;
+    }
+    
+    // Check if the amount exceeds the maximum transaction limit
+    if (amountNum > MAX_TRANSACTION_LIMIT) {
+      setError(`Transaction amount cannot exceed MK ${MAX_TRANSACTION_LIMIT.toLocaleString()}. Please enter a lower amount.`);
       setIsLoading(false);
       return;
     }
@@ -178,7 +195,7 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ usernam
       setIsLoading(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar onLogout={onLogout} />
@@ -189,7 +206,8 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ usernam
           className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium">
           <ArrowLeft size={16} className="mr-2" />
           Back to Dashboard
-        </button>        {isLoading ? (
+        </button>
+        {isLoading ? (
           <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto flex flex-col items-center justify-center min-h-[300px]">
             <Loader2 />
             <p className="mt-4 text-gray-600 text-sm">Processing your transfer request...</p>
@@ -299,8 +317,7 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ usernam
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <p className="text-gray-400"><b>MK</b></p>
-                  </div>
-                  <input
+                  </div>                  <input
                     type="number"
                     id="amount"
                     className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
@@ -308,6 +325,7 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ usernam
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     min="0.01"
+                    max={MAX_TRANSACTION_LIMIT}
                     step="0.01"
                     required
                   />
@@ -319,6 +337,10 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ usernam
                       Recipient gets: MK {(parseFloat(amount) * 0.97).toFixed(2)}
                     </span>
                   )}
+                </div>
+                <div className="mt-2 flex items-center text-xs text-amber-700 bg-amber-50 p-2 rounded">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  <span>Maximum transfer limit: MK {MAX_TRANSACTION_LIMIT.toLocaleString()}</span>
                 </div>
               </div>              {error && (
                 <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">

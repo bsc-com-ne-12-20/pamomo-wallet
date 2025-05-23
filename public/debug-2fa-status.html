@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2FA Status Debug Tool</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #8928A4;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .storage-item {
+      margin-bottom: 10px;
+      padding: 8px;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+    }
+    .storage-key {
+      font-weight: bold;
+    }
+    .storage-value {
+      font-family: monospace;
+      color: #0066cc;
+    }
+    .controls {
+      margin-top: 20px;
+    }
+    button {
+      background-color: #8928A4;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #7a2391;
+    }
+    .true {
+      color: green;
+    }
+    .false {
+      color: red;
+    }
+    .null {
+      color: #999;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>2FA Status Debug Tool</h1>
+  
+  <div class="card">
+    <h2>Current Authentication Status</h2>
+    <div id="status-summary"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Local Storage</h2>
+    <div id="local-storage"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Session Storage</h2>
+    <div id="session-storage"></div>
+  </div>
+  
+  <div class="controls">
+    <button onclick="refreshStatus()">Refresh Status</button>
+    <button onclick="syncStatus(true)">Set 2FA Enabled</button>
+    <button onclick="syncStatus(false)">Set 2FA Disabled</button>
+    <button onclick="clearAllStorage()">Clear All Storage</button>
+  </div>
+
+  <script>
+    // Function to display the status of all relevant storage items
+    function refreshStatus() {
+      // Check local storage
+      const localItems = {
+        'is2FAEnabled': localStorage.getItem('is2FAEnabled'),
+        'otpVerified': localStorage.getItem('otpVerified'),
+        'pre_2fa_user_id': localStorage.getItem('pre_2fa_user_id'),
+        'isAuthenticated': localStorage.getItem('isAuthenticated'),
+        'email': localStorage.getItem('email'),
+        'authToken': localStorage.getItem('authToken'),
+      };
+      
+      // Check session storage
+      const sessionItems = {
+        'is2FAEnabled': sessionStorage.getItem('is2FAEnabled'),
+        'otpVerified': sessionStorage.getItem('otpVerified'),
+        'pre_2fa_user_id': sessionStorage.getItem('pre_2fa_user_id'),
+        'email': sessionStorage.getItem('email')
+      };
+      
+      // Render local storage items
+      document.getElementById('local-storage').innerHTML = renderStorageItems(localItems);
+      
+      // Render session storage items
+      document.getElementById('session-storage').innerHTML = renderStorageItems(sessionItems);
+      
+      // Summary status
+      const is2FAEnabledLocal = localItems.is2FAEnabled === 'true';
+      const is2FAEnabledSession = sessionItems.is2FAEnabled === 'true';
+      const otpVerifiedLocal = localItems.otpVerified === 'true';
+      const otpVerifiedSession = sessionItems.otpVerified === 'true';
+      
+      const is2FAEnabled = is2FAEnabledLocal || is2FAEnabledSession;
+      const otpVerified = otpVerifiedLocal || otpVerifiedSession;
+      const isAuthenticated = localItems.isAuthenticated === 'true';
+      
+      let summaryHtml = `
+        <div class="storage-item">
+          <span class="storage-key">2FA Status:</span> 
+          <span class="${is2FAEnabled ? 'true' : 'false'}">${is2FAEnabled ? 'ENABLED' : 'DISABLED'}</span>
+        </div>
+        <div class="storage-item">
+          <span class="storage-key">OTP Verified:</span> 
+          <span class="${otpVerified ? 'true' : 'false'}">${otpVerified ? 'YES' : 'NO'}</span>
+        </div>
+        <div class="storage-item">
+          <span class="storage-key">Authenticated:</span> 
+          <span class="${isAuthenticated ? 'true' : 'false'}">${isAuthenticated ? 'YES' : 'NO'}</span>
+        </div>
+        <div class="storage-item">
+          <span class="storage-key">Storage Consistency:</span> 
+          <span class="${is2FAEnabledLocal === is2FAEnabledSession ? 'true' : 'false'}">
+            ${is2FAEnabledLocal === is2FAEnabledSession ? 'CONSISTENT' : 'INCONSISTENT'}
+          </span>
+        </div>
+      `;
+      
+      document.getElementById('status-summary').innerHTML = summaryHtml;
+    }
+    
+    // Helper function to render storage items
+    function renderStorageItems(items) {
+      let html = '';
+      
+      for (const [key, value] of Object.entries(items)) {
+        let displayValue = value;
+        let valueClass = '';
+        
+        if (value === null) {
+          displayValue = 'null';
+          valueClass = 'null';
+        } else if (value === 'true') {
+          valueClass = 'true';
+        } else if (value === 'false') {
+          valueClass = 'false';
+        }
+        
+        html += `
+          <div class="storage-item">
+            <span class="storage-key">${key}:</span> 
+            <span class="storage-value ${valueClass}">${displayValue}</span>
+          </div>
+        `;
+      }
+      
+      return html;
+    }
+    
+    // Function to synchronize 2FA status across storage mechanisms
+    function syncStatus(isEnabled) {
+      if (isEnabled) {
+        localStorage.setItem('is2FAEnabled', 'true');
+        sessionStorage.setItem('is2FAEnabled', 'true');
+      } else {
+        localStorage.removeItem('is2FAEnabled');
+        sessionStorage.removeItem('is2FAEnabled');
+        localStorage.removeItem('otpVerified');
+        sessionStorage.removeItem('otpVerified');
+      }
+      refreshStatus();
+    }
+    
+    // Function to clear all storage
+    function clearAllStorage() {
+      const keysToRemove = [
+        'is2FAEnabled', 'otpVerified', 'pre_2fa_user_id', 
+        'isAuthenticated', 'authToken'
+      ];
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
+      
+      refreshStatus();
+    }
+    
+    // Initialize the display on page load
+    document.addEventListener('DOMContentLoaded', refreshStatus);
+  </script>
+</body>
+</html>

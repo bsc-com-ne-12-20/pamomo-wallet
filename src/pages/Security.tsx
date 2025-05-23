@@ -59,7 +59,7 @@ const Security: React.FC = () => {
     }
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/v1/accounts/enable-2fa/', {
+      const response = await axios.post('https://mtima.onrender.com/api/v1/accounts/enable-2fa/', {
         email,
       });
 
@@ -90,7 +90,7 @@ const Security: React.FC = () => {
     }
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/v1/accounts/disable-2fa/', {
+      const response = await axios.post('https://mtima.onrender.com/api/v1/accounts/disable-2fa/', {
         email,
       });
 

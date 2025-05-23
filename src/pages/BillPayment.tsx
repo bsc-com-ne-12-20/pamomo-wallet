@@ -358,7 +358,7 @@ const BillPayment: React.FC<BillPaymentProps> = ({ username, onLogout }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar username={username} onLogout={handleLogout} />
+      <Navbar onLogout={handleLogout} />
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">

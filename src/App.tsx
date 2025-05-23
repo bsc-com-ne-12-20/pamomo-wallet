@@ -396,13 +396,14 @@ const App = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
           </Routes>
-        </div>      </MainLayout>
-      
-      <QRCodeScanner onScan={(result) => {
-        // Handle QR code scan result here
-        console.log("QR Code scanned:", result);
-        // You can add additional logic here to handle different types of QR codes
-      }} />
+        </div>      </MainLayout>        <QRCodeScanner 
+        isAuthenticated={isAuthenticated} 
+        isVerified={isVerified} 
+        onScan={(result) => {
+          // Result handling is now managed inside QRCodeScanner component 
+          // which detects emails (for SendMoney) and agent codes (for WithdrawMoney)
+          console.log("QR Code scanned:", result);
+        }} />
     </>
   );
 };

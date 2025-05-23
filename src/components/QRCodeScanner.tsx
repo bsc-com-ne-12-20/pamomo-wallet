@@ -1,24 +1,65 @@
-import React, { useState } from 'react';
-import { QrCode, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { QrCode, X, AlertCircle } from 'lucide-react';
 import { QrReader } from 'react-qr-reader';
+import { useNavigate } from 'react-router-dom';
 
 interface QRCodeScannerProps {
-  onScan: (result: string) => void;
+  onScan?: (result: string) => void;
+  isAuthenticated: boolean;
+  isVerified: boolean;
 }
 
-const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan }) => {
+const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, isAuthenticated, isVerified }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [notification, setNotification] = useState('');
+  const [showNotification, setShowNotification] = useState(false);
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Hide notification after 5 seconds
+    if (showNotification) {
+      const timer = setTimeout(() => {
+        setShowNotification(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showNotification]);
   
   const handleToggle = () => {
     setIsOpen(!isOpen);
+    // Clear notification when toggling the scanner
+    setShowNotification(false);
   };
-
   const handleScanResult = (result: any, error: any) => {
     if (result) {
-      onScan(result.getText());
+      const scannedText = result.getText();
+      processScannedResult(scannedText);
+      if (onScan) {
+        onScan(scannedText);
+      }
       setIsOpen(false);
     } else if (error) {
       console.error('QR Scan Error:', error);
+    }
+  };
+    const processScannedResult = (text: string) => {
+    // Email regex pattern
+    const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+    
+    // Agent code pattern (6-digit number)
+    const agentCodePattern = /^\d{6}$/;
+    
+    if (emailPattern.test(text)) {
+      // If it's an email, navigate to send money page with pre-filled recipient
+      navigate('/send', { state: { recipient: text } });
+    } else if (agentCodePattern.test(text)) {
+      // If it's a 6-digit code, navigate to withdraw money with pre-filled agent code
+      navigate('/withdraw', { state: { agentCode: text } });
+    } else {
+      // If we can't determine the type, show a more descriptive notification
+      setNotification(`Unrecognized QR code format: ${text.substring(0, 20)}${text.length > 20 ? '...' : ''}`);
+      setShowNotification(true);
+      console.log("Unknown QR code format:", text);
     }
   };
 
@@ -30,10 +71,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan }) => {
       // For demo purposes, just close the modal
       setIsOpen(false);
     }
-  };
-  return (
+  };  return (
     <div className="fixed bottom-6 right-6 z-40">
-      {!isOpen && (
+      {/* Only show scanner button when authenticated and verified */}
+      {isAuthenticated && isVerified && !isOpen && (
         <button
           onClick={handleToggle}
           className="bg-[#8928A4] text-white p-4 rounded-full shadow-lg hover:bg-[#722389] transition-colors flex items-center"
@@ -43,7 +84,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan }) => {
         </button>
       )}
       
-      {isOpen && (
+      {isAuthenticated && isVerified && isOpen && (
         <div className="bg-white rounded-lg shadow-xl w-80 sm:w-96 flex flex-col border border-gray-200">
           {/* QR Scanner header */}
           <div className="bg-[#8928A4] text-white px-4 py-3 rounded-t-lg flex justify-between items-center">
@@ -63,12 +104,12 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan }) => {
           {/* QR Scanner content */}
           <div>
             <div className="p-4">
-              <div className="mb-4">
-                <QrReader
-                  onResult={handleScanResult}
-                  constraints={{ facingMode: 'environment' }}
-                  style={{ width: '100%' }}
-                />
+              <div className="mb-4">                <div style={{ width: '100%' }}>
+                  <QrReader
+                    onResult={handleScanResult}
+                    constraints={{ facingMode: 'environment' }}
+                  />
+                </div>
               </div>
               <div className="mb-4">
                 <label
@@ -93,6 +134,16 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan }) => {
               </button>
             </div>
           </div>
+          
+          {/* Notification for unknown QR format */}
+          {showNotification && notification && (
+            <div className="p-4 text-sm text-red-700 bg-red-100 rounded-md mt-4 mx-4">
+              <div className="flex items-center">
+                <AlertCircle size={16} className="mr-2" />
+                {notification}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

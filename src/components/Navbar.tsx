@@ -3,11 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Wallet, LogOut, Menu, User, Shield, MessageSquare } from 'lucide-react';
 
 interface NavbarProps {
-  username: string;
   onLogout: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
+const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -21,9 +20,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
           <Link to="/dashboard" className="flex items-center space-x-2">
             <Wallet size={24} />
             <span className="text-xl font-bold">Pamomo</span>
-          </Link>
-          <div className="flex items-center">
-            <span className="mr-4">{username}</span>
+          </Link>          <div className="flex items-center">
             <div className="relative">
               <button
                 onClick={toggleMenu}

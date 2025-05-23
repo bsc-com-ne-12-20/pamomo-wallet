@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Store, ArrowLeft, AlertTriangle, QrCode } from 'lucide-react';
 import axios from 'axios';
@@ -47,10 +47,10 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
   const [savedAgentCode, setSavedAgentCode] = useState('');
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const [showAgentCodeConfirmation, setShowAgentCodeConfirmation] = useState(false);
-  const [scannedAgentCode, setScannedAgentCode] = useState('');
+  const [showAgentCodeConfirmation, setShowAgentCodeConfirmation] = useState(false);  const [scannedAgentCode, setScannedAgentCode] = useState('');
   const [isVerifyingAgentCode, setIsVerifyingAgentCode] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Fetch subscription details
@@ -303,10 +303,24 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
     setScannedAgentCode('');
     setShowAgentCodeConfirmation(false);
   };
+  useEffect(() => {
+    // Check if we have agent code in location state (from QR code)
+    const state = location.state as { agentCode?: string } | undefined;
+    if (state?.agentCode) {
+      // Don't immediately set the agent code, wait for confirmation
+      setScannedAgentCode(state.agentCode);
+      
+      // Show the agent code confirmation modal for the user to verify
+      setShowAgentCodeConfirmation(true);
+      
+      // Clear the location state to prevent reapplying on refresh
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar username={username} onLogout={onLogout} />
+      <Navbar onLogout={onLogout} />
       
       <div className="container mx-auto px-4 py-8">
         <button

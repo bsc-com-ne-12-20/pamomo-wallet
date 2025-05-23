@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Loader2 from '../components/Loader2';
 import { ArrowLeft, AlertTriangle, Wallet, CreditCard, Check, Building2, Smartphone } from 'lucide-react';
@@ -65,6 +65,8 @@ interface MobileProvider {
 const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
   // Define constants
   const PAYMENT_GATEWAY_LIMIT = 1000000; // 1,000,000 MWK limit for payment gateway
+  const navigate = useNavigate();
+  const location = useLocation();
   
   const [balance, setBalance] = useState<number | null>(null);
   const [receiver, setReceiver] = useState('');
@@ -99,9 +101,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
-  const [cardHolderName, setCardHolderName] = useState('');
-  
-  const navigate = useNavigate();
+  const [cardHolderName, setCardHolderName] = useState('');  // This will be handled after all functions are defined
 
   const minDate = new Date().toISOString().split('T')[0];
 
@@ -277,6 +277,20 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     
     fetchSubscription();
   }, []);
+
+  // Check if we have recipient in location state (from QR code scan)
+  useEffect(() => {
+    const state = location.state as { recipient?: string } | undefined;
+    if (state?.recipient) {
+      setReceiver(state.recipient);
+      
+      // Also trigger username lookup if we have a recipient email from QR scan
+      fetchUsername(state.recipient);
+      
+      // Clear the location state to prevent reapplying on refresh
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -890,7 +904,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar username={username} onLogout={onLogout} />
+      <Navbar onLogout={onLogout} />
       
       <div className="container mx-auto px-4 py-8">
         <button

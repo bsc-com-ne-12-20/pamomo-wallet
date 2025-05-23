@@ -261,7 +261,7 @@ const FinancialSupportPage: React.FC<FinancialSupportPageProps> = ({ username, o
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar username={username} onLogout={onLogout} />
+      <Navbar onLogout={onLogout} />
 
       <div className="container mx-auto px-4 py-8 pt-20">
         <button

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { DollarSign, ArrowLeft, User } from 'lucide-react';
+import { ArrowLeft, User, PlusCircle } from 'lucide-react';
 import Loader2 from '../components/Loader2';
 
 interface DepositMoneyProps {
@@ -239,14 +239,20 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
                 <div className="mb-4 p-2 bg-green-50 text-green-500 rounded-md text-sm">
                   {success}
                 </div>
-              )}
-
-              <button
+              )}              <button
                 type="submit"
-                className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4] flex items-center justify-center"
                 disabled={isLoading}
-              >
-                {isLoading ? 'Processing...' : 'Deposit Money'}
+              >                {isLoading ? (
+                  'Processing...'
+                ) : (
+                  <>
+                    <div className="bg-purple-100 p-1.5 rounded-full mr-2 flex items-center justify-center">
+                      <PlusCircle size={16} className="text-[#8928A4]" />
+                    </div>
+                    Deposit Money
+                  </>
+                )}
               </button>
             </form>
           </div>

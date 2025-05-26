@@ -201,9 +201,79 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       setShowConfirmation(true);
     }
   };
-
-  const confirmQrCode = () => {
+  const confirmQrCode = async () => {
     setShowConfirmation(false);
+    setIsSending(true);
+    
+    try {
+      // Continue with the transaction after confirmation
+      const amountNum = parseFloat(amount);
+      
+      // Check transaction limits
+      if (!checkTransactionLimit(amountNum, false)) {
+        setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
+        setTimeout(() => setIsSending(false), 3000);
+        return;
+      }
+
+      // Check balance
+      if (amountNum > (balance || 0)) {
+        setError('Insufficient balance');
+        setTimeout(() => setIsSending(false), 3000);
+        return;
+      }
+
+      // Handle recurring payment setup if selected
+      if (makeRecurring) {
+        const recurringResult = await processRecurringPayment();
+        
+        if (!recurringResult.success) {
+          setError(recurringResult.error);
+          setTimeout(() => setIsSending(false), 3000);
+          return;
+        }
+      }
+
+      // Process the immediate transaction
+      const senderEmail = localStorage.getItem('email');
+      
+      const response = await axios.post(`${API_BASE_URL}/trsf/`, {
+        sender_email: senderEmail,
+        receiver_email: receiver,
+        amount: amountNum,
+        description: description || undefined
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });      if (response.status === 201) {
+        // Store data for success popup - properly format the amount
+        const formattedAmount = parseFloat(amount) ? parseFloat(amount).toString() : "0";
+        localStorage.setItem('transferAmount', formattedAmount);
+        localStorage.setItem('transferReceiver', receiver);
+        localStorage.setItem('transferReceiverUsername', receiverUsername);
+        
+        // Also store last transaction data
+        localStorage.setItem('lastTransactionAmount', amount);
+        localStorage.setItem('lastTransactionReceiver', receiver);
+        localStorage.setItem('lastTransactionReceiverUsername', receiverUsername);
+        
+        setShowSuccessPopup(true);
+        setAmount('');
+        setReceiver('');
+      } else {
+        setError('Transaction failed. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('Transaction error:', err);
+      if (err.response?.data) {
+        setError(`Transaction failed: ${err.response.data.message || JSON.stringify(err.response.data)}`);
+      } else {
+        setError('An error occurred while processing your transaction.');
+      }
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const cancelQrCode = () => {
@@ -355,7 +425,6 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     return userLimit;
   };
     // Constant declaration moved to the top of the component
-
   const handleSubmitPamomoWallet = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -374,7 +443,39 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       setError('Please enter a valid amount');
       setTimeout(() => setIsSending(false), 3000);
       return;
-    }    // Check transaction limits
+    }
+      // Validate email existence before proceeding
+    try {
+      setFetchingUsername(true);
+      const response = await axios.post(`${API_BASE_URL}/accounts/get-username/`, {
+        email: receiver
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.status === 200) {
+        setReceiverUsername(response.data.username);
+        setFetchingUsername(false);
+        setShowConfirmation(true);
+        setIsSending(false); // Stop sending state while confirmation is shown
+        return; // Stop execution until user confirms
+      } 
+    } catch (error: any) {
+      console.error("Error verifying email:", error);
+      if (error.response?.status === 404) {
+        setError('The receiver email does not exist. Please check and try again.');
+      } else {
+        setError('Failed to verify receiver. Please try again.');
+      }
+      setFetchingUsername(false);
+      setIsSending(false);
+      return;
+    }
+    
+    // The following code won't be reached since we return after validation
+    // All transaction processing now happens in confirmQrCode function
     if (!checkTransactionLimit(amountNum, false)) {
       setError(`Transaction amount exceeds your ${subscription?.plan} plan limit of MWK${getTransactionLimit().toLocaleString()}. Please upgrade your subscription to send larger amounts.`);
       setTimeout(() => setIsSending(false), 3000);
@@ -593,9 +694,9 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
     // For external payments, we use the payment gateway
     try {
       const senderEmail = localStorage.getItem('email');
-      
-      // Store transfer info in localStorage
-      localStorage.setItem('transferAmount', amount);
+        // Store transfer info in localStorage - ensure amount is properly formatted
+      const formattedAmount = parseFloat(amount) ? parseFloat(amount).toString() : "0";
+      localStorage.setItem('transferAmount', formattedAmount);
       
       if (paymentMethod === 'bank_transfer') {
         const selectedBankName = availableBanks.find(bank => bank.id === selectedBank)?.name || selectedBank;
@@ -734,10 +835,10 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       // Mock successful payment - simulate API delay
       setTimeout(() => {
         // Store transfer info for success modal
-        const providerName = mobileProviders.find(provider => provider.id === mobileProvider)?.name || mobileProvider;
-        localStorage.setItem('transferReceiver', mobileNumber);
+        const providerName = mobileProviders.find(provider => provider.id === mobileProvider)?.name || mobileProvider;        localStorage.setItem('transferReceiver', mobileNumber);
         localStorage.setItem('transferReceiverUsername', `${mobileNumber} (${providerName})`);
-        localStorage.setItem('transferAmount', amount);
+        const formattedAmount = parseFloat(amount) ? parseFloat(amount).toString() : "0";
+        localStorage.setItem('transferAmount', formattedAmount);
         localStorage.setItem('transactionId', mockTransactionId);
         
         setIsSending(false);
@@ -807,11 +908,11 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
       // Generate a mock transaction ID
       const mockTransactionId = generateMockTransactionId();
       const selectedBankName = availableBanks.find(bank => bank.id === selectedBank)?.name || selectedBank;
-      
-      // Store transfer info for success modal
+        // Store transfer info for success modal
       localStorage.setItem('transferReceiver', accountNumber);
       localStorage.setItem('transferReceiverUsername', `${accountName} (${selectedBankName})`);
-      localStorage.setItem('transferAmount', amount);
+      const formattedAmount = parseFloat(amount) ? parseFloat(amount).toString() : "0";
+      localStorage.setItem('transferAmount', formattedAmount);
       localStorage.setItem('transactionId', mockTransactionId);
       
       // Mock successful payment - simulate API delay
@@ -1413,12 +1514,11 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
           onClose={() => setShowQRScanner(false)}
           onScanResult={handleScanResult}
           handleImageUpload={handleImageUpload}
-        />
-
-        <ConfirmationModal
+        />        <ConfirmationModal
           show={showConfirmation}
           receiver={receiver}
           receiverUsername={receiverUsername}
+          amount={amount}
           onConfirm={confirmQrCode}
           onCancel={cancelQrCode}
           isLoading={fetchingUsername}
@@ -1426,7 +1526,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
 
         <SuccessModal
           show={showSuccessPopup}
-          amount={amount}
+          amount={parseFloat(amount) ? parseFloat(amount).toString() : "0"}
           receiver={receiver}
           receiverUsername={receiverUsername}
           onClose={handlePopupClose}

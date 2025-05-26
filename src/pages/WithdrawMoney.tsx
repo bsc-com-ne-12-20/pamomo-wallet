@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Store, ArrowLeft, AlertTriangle, QrCode } from 'lucide-react';
+import { Store, ArrowLeft, AlertTriangle, QrCode, Banknote } from 'lucide-react';
 import axios from 'axios';
 import { 
   TRANSACTION_LIMITS, 
@@ -461,11 +461,13 @@ const WithdrawMoney: React.FC<WithdrawMoneyProps> = ({ username, onLogout, isVer
 
               {error && <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">{error}</div>}
               {success && <div className="mb-4 p-2 bg-green-50 text-green-500 rounded-md text-sm">{success}</div>}
-              
-              <button
+                <button
                 type="submit"
-                className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+                className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4] flex items-center justify-center"
               >
+                <div className="bg-white bg-opacity-20 p-1.5 rounded-full mr-2 flex items-center justify-center">
+                  <Banknote size={16} className="text-white" />
+                </div>
                 Withdraw Money
               </button>
             </form>

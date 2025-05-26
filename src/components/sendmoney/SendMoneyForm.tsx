@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Mail, QrCode, AlertTriangle } from 'lucide-react';
+import { Mail, QrCode, AlertTriangle, SendHorizontal } from 'lucide-react';
 import TransactionDetails from './TransactionDetails';
 
 interface SendMoneyFormProps {
@@ -80,8 +80,7 @@ const SendMoneyForm: React.FC<SendMoneyFormProps> = ({
     setError('');
   }, [amount, balance, transactionLimit, isPaymentGateway, PAYMENT_GATEWAY_LIMIT, setError]);
 
-  return (
-    <form onSubmit={handleSubmit}>
+  return (    <form onSubmit={handleSubmit}>
       <div className="mb-4">
         <label htmlFor="receiver" className="block text-sm font-medium text-gray-700 mb-1">
           Receiver's Email
@@ -97,6 +96,7 @@ const SendMoneyForm: React.FC<SendMoneyFormProps> = ({
             placeholder="email@example.com"
             value={receiver}
             onChange={(e) => setReceiver(e.target.value)}
+            required
           />
           <button
             type="button"
@@ -170,13 +170,14 @@ const SendMoneyForm: React.FC<SendMoneyFormProps> = ({
         <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
           {error}
         </div>
-      )}
-      
-      <button
+      )}      <button
         type="submit"
-        className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4]"
+        className="w-full bg-[#8928A4] text-white py-2 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4] flex items-center justify-center"
         disabled={isExceedingLimit || !!error}
       >
+        <div className="bg-white bg-opacity-20 p-1.5 rounded-full mr-2 flex items-center justify-center">
+          <SendHorizontal size={16} className="text-white" />
+        </div>
         {submitButtonText}
       </button>
     </form>

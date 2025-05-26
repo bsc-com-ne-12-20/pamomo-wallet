@@ -5,6 +5,7 @@ interface ConfirmationModalProps {
   show: boolean;
   receiver: string;
   receiverUsername: string;
+  amount?: string;
   onConfirm: () => void;
   onCancel: () => void;
   isLoading: boolean;
@@ -14,6 +15,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   show,
   receiver,
   receiverUsername,
+  amount,
   onConfirm,
   onCancel,
   isLoading
@@ -29,14 +31,19 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           <div className="flex justify-center items-center py-4">
             <Loader2 />
           </div>
-        ) : (
-          <div className="mb-4">
+        ) : (          <div className="mb-4">
             <p className="text-sm text-gray-600 mb-2">
               You are about to send money to:
             </p>
             <div className="bg-purple-50 p-3 rounded-md">
               <p className="font-bold text-[#8928A4]">{receiverUsername}</p>
               <p className="text-sm text-gray-700">{receiver}</p>
+              {amount && (
+                <div className="mt-3 pt-3 border-t border-purple-200">
+                  <p className="text-sm text-gray-600">Amount:</p>
+                  <p className="font-bold text-[#8928A4]">MK {parseFloat(amount).toLocaleString()}</p>
+                </div>
+              )}
             </div>
           </div>
         )}

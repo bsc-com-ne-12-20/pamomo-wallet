@@ -33,11 +33,28 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
     }
   }, [show, receiver, receiverUsername]);
 
-  if (!show) return null;
-
-  const displayReceiver = localStorage.getItem('transferReceiver') || receiver;
+  if (!show) return null;  const displayReceiver = localStorage.getItem('transferReceiver') || receiver;
   const displayUsername = localStorage.getItem('transferReceiverUsername') || receiverUsername;
-  const displayAmount = localStorage.getItem('transferAmount') || amount;
+  const storedAmount = localStorage.getItem('transferAmount');
+  const lastTransactionAmount = localStorage.getItem('lastTransactionAmount');
+  
+  // Use multiple sources to get a valid amount, in priority order
+  const displayAmount = (() => {
+    // Priority 1: Use direct amount prop if it's valid
+    if (amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0) {
+      return amount;
+    }
+    // Priority 2: Use transferAmount from localStorage if valid
+    if (storedAmount && !isNaN(parseFloat(storedAmount)) && parseFloat(storedAmount) > 0) {
+      return storedAmount;
+    }
+    // Priority 3: Use lastTransactionAmount from localStorage if valid
+    if (lastTransactionAmount && !isNaN(parseFloat(lastTransactionAmount)) && parseFloat(lastTransactionAmount) > 0) {
+      return lastTransactionAmount;
+    }
+    // Fallback: Return zero
+    return "0";
+  })();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -50,10 +67,17 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
           <h3 className="text-xl font-bold text-gray-900 mb-2">Payment Successful!</h3>
         </div>
         
-        <div className="space-y-3">
-          <div className="bg-gray-50 p-3 rounded-md">
-            <p className="text-sm text-gray-600 mb-1">Amount</p>
-            <p className="text-lg font-semibold text-gray-900">MK{parseFloat(displayAmount).toLocaleString()}</p>
+        <div className="space-y-3">          <div className="bg-gray-50 p-3 rounded-md">
+            <p className="text-sm text-gray-600 mb-1">Amount</p>            <p className="text-lg font-semibold text-gray-900">
+              MK{(() => {
+                const parsedAmount = parseFloat(displayAmount);
+                // Format with commas and 2 decimal places
+                return isNaN(parsedAmount) ? '0.00' : parsedAmount.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                });
+              })()}
+            </p>
           </div>
           
           <div className="bg-gray-50 p-3 rounded-md">

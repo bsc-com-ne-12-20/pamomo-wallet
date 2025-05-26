@@ -184,24 +184,42 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
       setError(err.response?.data?.message || 'Failed to delete auto payment');
     }
   };
-
   const fetchPaymentHistory = async (paymentId: string) => {
     setLoadingHistory(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/autopayments/${paymentId}/history/`);
-      if (response.status === 200) {
-        setPaymentHistory(response.data);
+      const email = localStorage.getItem('email');
+      if (!email) {
+        console.error('Email not found in localStorage');
+        return;
       }
-    } catch (err: any) {
+        // Use the endpoint URL with both email and payment ID to get specific payment history
+      const response = await axios.get(`${API_BASE_URL}/autopayments/${paymentId}/transactions`);
+      
+      if (response.status === 200) {
+        console.log('Payment history response for payment ID:', paymentId, response.data);
+        
+        // Extract payment_history from the response data
+        let transactions = response.data.payment_history || [];
+          // If the API doesn't filter by payment ID, do it client-side
+        if (transactions.length > 0 && transactions[0].auto_payment_id) {
+          transactions = transactions.filter((item: PaymentHistoryItem) => item.auto_payment_id === paymentId);
+        }
+        
+        setPaymentHistory(transactions);
+      }    } catch (err: any) {
       console.error('Failed to fetch payment history:', err.response || err);
+      if (err.response?.data?.error) {
+        console.error('API error:', err.response.data.error);
+      }
+      // Ensure we reset payment history to empty array on error
+      setPaymentHistory([]);
     } finally {
       setLoadingHistory(false);
     }
   };
-
   const handleShowHistory = (paymentId: string) => {
     setSelectedPaymentId(paymentId);
-    fetchPaymentHistory(paymentId);
+    fetchPaymentHistory(paymentId); // Now we use the payment ID to fetch only that payment's history
   };
 
   const handleRecipientTypeSelect = (type: RecipientType) => {
@@ -494,6 +512,7 @@ const AutoPayments: React.FC<AutoPaymentsProps> = ({ username, onLogout }) => {
             onClose={() => setSelectedPaymentId(null)}
             loading={loadingHistory}
             history={paymentHistory}
+            paymentId={selectedPaymentId}
           />
         )}
       </div>

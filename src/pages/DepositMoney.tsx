@@ -41,9 +41,9 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
       }
     }
   }, [location, userEmail]);
-
   const verifyPayment = async (txRef: string, email: string) => {
     try {
+      console.log(`🔍 Verifying deposit payment for transaction: ${txRef} for user ${email}`);
       const response = await fetch(`https://api.paychangu.com/verify-payment/${txRef}`, {
         method: 'GET',
         headers: {
@@ -53,26 +53,37 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
       });
 
       const result = await response.json();
+      console.log('📥 Payment verification response:', result);
 
       if (result.status === 'success' && result.data.status === 'success') {
-        const deductedAmount = parseFloat(result.data.amount) * 0.97;
-        await sendPaymentDetails(email, deductedAmount);
-        setSuccess('Payment successful. Amount has been added to your account.');
-        localStorage.removeItem('depositAmount');
+        console.log('✅ Deposit payment verification successful');
+        const originalAmount = parseFloat(result.data.amount);
+        const deductedAmount = originalAmount * 0.97; // Apply 3% fee
+        console.log(`💰 Original amount: ${originalAmount}, After 3% fee: ${deductedAmount}`);
+        
+        try {
+          await sendPaymentDetails(email, deductedAmount);
+          setSuccess('Payment successful. Amount has been added to your account.');
+          localStorage.removeItem('depositAmount');
+        } catch (depositError: any) {
+          console.error('💥 Failed to deposit to account:', depositError);
+          setError(`Payment processing failed: ${depositError?.message || 'Unknown error'}. Please contact support.`);
+        }
       } else {
-        setError('Transaction verification failed.');
+        console.error('❌ Deposit payment verification failed:', result);
+        setError(`Transaction verification failed: ${result.message || 'Unknown error'}`);
       }
     } catch (err) {
+      console.error('❌ Error verifying payment:', err);
       setError('Error verifying payment. Please try again.');
-      console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
-
   const sendPaymentDetails = async (email: string, amount: number) => {
     try {
-      await fetch('https://mtima.onrender.com/api/v1/dpst', {
+      // Fix the API endpoint URL - adding trailing slash which is required
+      const response = await fetch('https://mtima.onrender.com/api/v1/dpst/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,6 +93,13 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
           amount: amount.toFixed(2),
         }),
       });
+
+      // Check if the API call was successful
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Deposit API error (${response.status}):`, errorText);
+        throw new Error(`Deposit failed with status ${response.status}: ${errorText}`);
+      }
 
       setSuccess('Payment details processed and amount updated.');
     } catch (err) {

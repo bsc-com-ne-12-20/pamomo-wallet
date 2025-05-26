@@ -16,10 +16,12 @@ interface ExternalWalletTransferProps {
 const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogout }) => {
   const [amount, setAmount] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
-  const [error, setError] = useState('');  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessView, setShowSuccessView] = useState(false);
   const [transferData, setTransferData] = useState<{amount: string, recipient: string}>({amount: '', recipient: ''});
+  const [isValidatingEmail, setIsValidatingEmail] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const userEmail = localStorage.getItem('email') || '';
@@ -45,6 +47,7 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
     if (isTransferSuccess) {
       const amount = localStorage.getItem('lastTransferAmount') || '';
       const recipient = localStorage.getItem('lastTransferRecipient') || '';
+      console.log(`Showing success view for transfer: ${amount} to ${recipient}`);
       setTransferData({amount, recipient});
       setShowSuccessView(true);
       // Clear the success flag after showing the success view
@@ -56,67 +59,158 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
     const txRef = queryParams.get('tx_ref');
 
     if (txRef) {
+      console.log(`Found transaction reference in URL: ${txRef}`);
       const savedAmount = localStorage.getItem('externalTransferAmount');
       const savedRecipientEmail = localStorage.getItem('externalRecipientEmail');
 
       if (savedAmount && savedRecipientEmail) {
+        console.log(`Stored transfer details found: Amount ${savedAmount} to ${savedRecipientEmail}`);
         setIsLoading(true);
         verifyPayment(txRef, savedRecipientEmail);
       } else {
+        console.error('Transaction data missing in localStorage', { 
+          amount: savedAmount, 
+          recipientEmail: savedRecipientEmail 
+        });
         setError('Transaction information missing. Please try again.');
       }
     }
-  }, [location, userEmail]);
-
-  const verifyPayment = async (txRef: string, email: string) => {
+  }, [location, userEmail]);  const verifyPayment = async (txRef: string, recipientEmail: string) => {
     try {
+      console.log(`🔍 Verifying payment for transaction: ${txRef}`);
+      console.log(`👤 Current user (sender): ${userEmail}`);
+      console.log(`👥 Recipient user: ${recipientEmail}`);
+      
+      // Check if emails match (this should never happen)
+      if (recipientEmail.toLowerCase() === userEmail.toLowerCase()) {
+        const errorMessage = "CRITICAL ERROR: Recipient email matches sender email in external transfer!";
+        console.error(errorMessage);
+        setError('System error: External transfer cannot be sent to your own account');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('📤 Sending verification request to payment gateway...');
       const response = await fetch(`https://api.paychangu.com/verify-payment/${txRef}`, {
         method: 'GET',
         headers: {
           accept: 'application/json',
           Authorization: 'Bearer SEC-TEST-nqbbmKfBLjAN7F4XExoJqpJ0ut1rBV5T',
         },
-      });
-
-      const result = await response.json();      if (result.status === 'success' && result.data.status === 'success') {
-        const deductedAmount = parseFloat(result.data.amount) * 0.97;
-        await sendPaymentDetails(email, deductedAmount);
-        setSuccess('Payment successful. Amount has been sent to the recipient.');
-        // Store successful transfer data for display
-        localStorage.setItem('lastTransferSuccess', 'true');
-        localStorage.setItem('lastTransferAmount', (deductedAmount).toFixed(2));
-        localStorage.setItem('lastTransferRecipient', email);
-        // Clean up transfer data
-        localStorage.removeItem('externalTransferAmount');
-        localStorage.removeItem('externalRecipientEmail');
-      } else {
-        setError('Transaction verification failed.');
+      });      const result = await response.json();
+      console.log('📥 Payment verification response:', result);
+      
+      if (result.status === 'success' && result.data.status === 'success') {
+        console.log('✅ Payment verification successful');
+        const originalAmount = parseFloat(result.data.amount);
+        const deductedAmount = originalAmount * 0.97; // Apply 3% fee
+        console.log(`💰 Original amount: ${originalAmount}, After 3% fee: ${deductedAmount}`);
+        
+        // IMPORTANT: Make sure we're using the recipient's email, not the current user's email
+        if (recipientEmail === userEmail) {
+          console.error("ERROR: Recipient email matches current user - this is an external transfer!");
+          setError('System error: Cannot send external transfer to your own account');
+          setIsLoading(false);
+          return;
+        }
+        
+        try {          try {
+            // Deposit the money directly to recipient's account using the same flow as DepositMoney.tsx
+            await sendPaymentDetails(recipientEmail, deductedAmount);
+            
+            // Log successful transfer
+            console.log(`✅ Deposit successful - sent ${deductedAmount.toFixed(2)} to ${recipientEmail}`);
+            
+            // Store successful transfer data for display
+            localStorage.setItem('lastTransferSuccess', 'true');
+            localStorage.setItem('lastTransferAmount', (deductedAmount).toFixed(2));
+            localStorage.setItem('lastTransferRecipient', recipientEmail);
+            // Clean up transfer data
+            localStorage.removeItem('externalTransferAmount');
+            localStorage.removeItem('externalRecipientEmail');
+            
+            // Set success message
+            setSuccess(`Payment successful. Amount has been sent to ${recipientEmail}'s account.`);
+            
+            // Trigger success view
+            setShowSuccessView(true);
+          } catch (error: any) {
+            console.error("💥 Failed to deposit to recipient account:", error);
+            setError(`Payment processing failed: ${error?.message || 'Unknown error'}. Please contact support.`);
+          }
+        } catch (err) {
+          console.error("Failed to deposit to recipient account:", err);
+          setError('Payment was processed but deposit to recipient failed. Please contact support.');
+        }      } else {
+        console.error('❌ Payment verification failed:', result);
+        setError(`Transaction verification failed: ${result.message || 'Unknown error'}`);
       }
     } catch (err) {
+      console.error('❌ Error verifying payment:', err);
       setError('Error verifying payment. Please try again.');
-      console.error(err);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const sendPaymentDetails = async (email: string, amount: number) => {
+  };const sendPaymentDetails = async (recipientEmail: string, amount: number) => {
     try {
-      await fetch('https://mtima.onrender.com/api/v1/dpst', {
+      console.log(`Depositing payment to recipient account: ${recipientEmail}, amount: ${amount}`);
+      
+      // Double verify that recipientEmail is not the current user's email
+      if (recipientEmail.toLowerCase() === userEmail.toLowerCase()) {
+        console.error("ERROR: Attempted to deposit to current user account in external transfer");
+        throw new Error('Cannot send external transfer to your own account');
+      }
+        // Use the deposit endpoint WITH the trailing slash (/) - which is critical for the API to work
+      // Previous implementation was missing the trailing slash causing a 404 error
+      const response = await fetch('https://mtima.onrender.com/api/v1/dpst/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email,
+          email: recipientEmail,  // This is the key difference - using recipient's email
           amount: amount.toFixed(2),
         }),
       });
-
-      setSuccess('Payment details processed and amount sent to recipient.');
+      
+      // Verify the API call was successful
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Deposit API error (${response.status}):`, errorText);
+        throw new Error(`Deposit failed with status ${response.status}: ${errorText}`);
+      }
+      
+      console.log(`Deposit completed successfully to ${recipientEmail}`);
+      setSuccess(`Payment successful. Amount has been sent to ${recipientEmail}'s account.`);
     } catch (err) {
+      console.error('Failed to deposit to recipient account:', err);
       setError('Failed to send payment details. Please try again.');
-      console.error(err);
+      throw err; // Re-throw so the caller can handle it
+    }
+  };
+
+  const validateRecipientEmail = async (email: string): Promise<boolean> => {
+    setIsValidatingEmail(true);
+    try {
+      const response = await fetch('https://mtima.onrender.com/api/v1/accounts/get-username/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        setError('The recipient email does not exist in our system. Please check and try again.');
+        return false;
+      }
+      
+      // Email exists in the system
+      return true;
+    } catch (err) {
+      console.error('Error validating email:', err);
+      setError('Unable to verify the recipient. Please try again.');
+      return false;
+    } finally {
+      setIsValidatingEmail(false);
     }
   };
 
@@ -137,14 +231,23 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
       setIsLoading(false);
       return;
     }
-
+    
     // Simple email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(recipientEmail)) {
       setError('Please enter a valid email address');
       setIsLoading(false);
       return;
-    }    const amountNum = parseFloat(amount);
+    }
+    
+    // Prevent sending to your own account
+    if (recipientEmail.toLowerCase() === userEmail.toLowerCase()) {
+      setError('You cannot send money to your own account using external wallet transfer. Please use the Deposit feature instead.');
+      setIsLoading(false);
+      return;
+    }
+    
+    const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Please enter a valid amount');
       setIsLoading(false);
@@ -154,6 +257,13 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
     // Check if the amount exceeds the maximum transaction limit
     if (amountNum > MAX_TRANSACTION_LIMIT) {
       setError(`Transaction amount cannot exceed MK ${MAX_TRANSACTION_LIMIT.toLocaleString()}. Please enter a lower amount.`);
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate if recipient email exists in the system
+    const isValidRecipient = await validateRecipientEmail(recipientEmail);
+    if (!isValidRecipient) {
       setIsLoading(false);
       return;
     }
@@ -179,11 +289,20 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
         }),
       });
 
-      const result = await response.json();
-
-      if (result.status === 'success' && result.data.checkout_url) {
+      const result = await response.json();      if (result.status === 'success' && result.data.checkout_url) {
+        console.log(`Starting external transfer to: ${recipientEmail}`);
         localStorage.setItem('externalTransferAmount', amount);
         localStorage.setItem('externalRecipientEmail', recipientEmail);
+        
+        // Double check that we're storing the correct recipient email
+        const storedEmail = localStorage.getItem('externalRecipientEmail');
+        if (storedEmail !== recipientEmail) {
+          console.error(`Storage error: ${storedEmail} does not match ${recipientEmail}`);
+          setError('An error occurred with the recipient information. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+        
         window.location.href = result.data.checkout_url;
       } else {
         setError('Transaction initiation failed. Please try again.');
@@ -217,9 +336,9 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
             <div className="text-center">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Check size={32} className="text-green-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Transfer Successful!</h2>
-              <p className="text-gray-600 mb-6">Your money has been sent successfully.</p>
+              </div>              <h2 className="text-2xl font-bold text-gray-800 mb-2">Transfer Successful!</h2>
+              <p className="text-gray-600 mb-2">Your money has been sent successfully to the recipient's account.</p>
+              <p className="text-amber-700 font-medium mb-6">These funds have been transferred to the recipient's Pamomo account, not your own.</p>
               
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <div className="flex justify-between mb-3">
@@ -227,8 +346,8 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
                   <span className="font-semibold">MK {transferData.amount}</span>
                 </div>
                 <div className="flex justify-between mb-3">
-                  <span className="text-sm text-gray-500">Recipient:</span>
-                  <span className="font-semibold">{transferData.recipient}</span>
+                  <span className="text-sm text-gray-500">Recipient Account:</span>
+                  <span className="font-semibold text-green-700">{transferData.recipient}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Date:</span>
@@ -255,12 +374,10 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">            <h2 className="text-2xl font-bold text-gray-800 mb-6">Send Money via External Wallet</h2>
-            
-            <div className="bg-purple-50 rounded-md p-4 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">            <h2 className="text-2xl font-bold text-gray-800 mb-6">Send Money via External Wallet</h2>              <div className="bg-purple-50 rounded-md p-4 mb-6">
               <p className="text-sm text-purple-700">
                 <span className="font-medium">How it works:</span> Send money to any Pamomo user directly from your external digital wallet. 
-                The recipient will receive the funds in their Pamomo account.
+                The recipient (whose email you enter below) will receive the funds in their Pamomo account. <span className="font-bold underline">This is for sending money to OTHER users, not for adding money to your own account</span>.
               </p>
             </div>
 
@@ -286,8 +403,7 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Recipient email field */}
-              <div className="mb-4">
+              {/* Recipient email field */}              <div className="mb-4">
                 <label htmlFor="recipientEmail" className="block text-sm font-medium text-gray-700 mb-1">
                   Recipient Email
                 </label>
@@ -304,9 +420,14 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
                     onChange={(e) => setRecipientEmail(e.target.value)}
                     required
                   />
+                  {isValidatingEmail && (
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-pulse text-xs text-purple-600">Validating...</div>
+                    </div>
+                  )}
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Funds will be sent to this account
+                <p className="mt-1 text-xs font-medium text-red-700">
+                  IMPORTANT: Funds will be sent directly to this recipient's account (not your own account)
                 </p>
               </div>
 
@@ -358,14 +479,12 @@ const ExternalWalletTransfer: React.FC<ExternalWalletTransferProps> = ({ onLogou
                 <p className="text-xs text-gray-500 mb-4">
                   By clicking "Send Money", you'll be redirected to our secure payment gateway to complete the transaction using your preferred external payment method.
                 </p>
-              </div>
-
-              <button
+              </div>              <button
                 type="submit"
                 className="w-full bg-[#8928A4] text-white py-3 px-4 rounded-md hover:bg-[#7a2391] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8928A4] font-medium"
-                disabled={isLoading}
+                disabled={isLoading || isValidatingEmail}
               >
-                {isLoading ? 'Processing...' : 'Send Money'}
+                {isLoading ? 'Processing...' : isValidatingEmail ? 'Validating Recipient...' : 'Send Money'}
               </button>
             </form>
           </div>

@@ -157,16 +157,17 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
       setLoading(false);
     }
   };
-
   const fetchPaymentHistory = async () => {
     try {
       setLoadingHistory(true);
       const email = localStorage.getItem('email');
       if (!email) return;
 
-      const response = await axios.get(`${API_BASE_URL}/subscriptions/payment-history/?email=${email}`);
+      // Update to use the correct endpoint for fetching payment history
+      const response = await axios.get(`https://mtima.onrender.com/api/v1/subscriptions/payments/?email=${email}`);
 
       if (response.status === 200) {
+        console.log('Payment history response:', response.data);
         setPaymentHistory(response.data.payment_history || []);
       }
     } catch (error) {
@@ -240,7 +241,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
     }
     setShowPaymentHistory(!showPaymentHistory);
   };
-
   const formatDate = (dateString: string) => {
     if (!dateString || dateString === 'NEVER') return 'Never';
     try {
@@ -253,6 +253,9 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
         day: 'numeric',
         month: 'short',
         year: 'numeric'
+      }) + ' ' + date.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit'
       });
     } catch {
       return 'Invalid date';
@@ -391,11 +394,82 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
               <ArrowRight size={14} className="ml-1" />
             </button>
           </div>
-        )}
-
-        {showPaymentHistory && (
+        )}        {showPaymentHistory && (
           <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Payment History</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Payment History</h2>
+              <button 
+                onClick={togglePaymentHistory}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            
+            {loadingHistory ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
+              </div>
+            ) : paymentHistory.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No payment history available
+              </div>
+            ) : (              <div className="overflow-x-auto">
+                <div className="text-right mb-2">
+                  <span className="text-xs text-gray-500 italic">Showing {paymentHistory.length} transactions</span>
+                </div>
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-purple-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">
+                        Plan
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">
+                        Billing Period
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">
+                        Date & Time
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paymentHistory.map((payment, index) => (
+                      <tr 
+                        key={index} 
+                        className={
+                          index === 0 
+                            ? 'bg-green-50 border-l-4 border-green-400' 
+                            : index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-700">
+                          {payment.plan_display || payment.plan}
+                          {index === 0 && (
+                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Latest
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {payment.period_display || payment.period}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          MWK {payment.amount.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(payment.timestamp)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

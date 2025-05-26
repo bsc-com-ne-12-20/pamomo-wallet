@@ -124,7 +124,7 @@ const VerifyTransaction: React.FC<VerifyTransactionProps> = ({ username, onLogou
       
       // Send payment details using fetch, matching the exact implementation in DepositMoney.tsx
       try {
-        const response = await fetch('https://mtima.onrender.com/api/v1/dpst', {
+        const response = await fetch('https://mtima.onrender.com/api/v1/dpst/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

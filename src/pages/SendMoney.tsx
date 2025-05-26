@@ -42,10 +42,8 @@ interface SubscriptionPlan {
 interface SendMoneyProps {
   onLogout: () => void;
   isVerified: boolean;
-}
-
-// Expanded payment method types
-type PaymentMethod = 'pamomo_wallet' | 'mobile_money' | 'bank_transfer' | 'external_wallet';
+}  // Expanded payment method types
+type PaymentMethod = 'pamomo_wallet' | 'mobile_money' | 'bank_transfer';
 
 // Bank data interface
 interface BankOption {
@@ -963,17 +961,7 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
                       <p className="text-xs text-gray-500">Send money from Pamomo to other Pamomo users</p>
                     </div>
                   </button>
-                  
-                  <button
-                    onClick={() => handlePaymentMethodSelect('external_wallet')}
-                    className="w-full bg-white border border-gray-300 p-4 rounded-lg flex items-center text-left hover:bg-gray-50 transition-colors"
-                  >
-                    <CreditCard className="text-purple-600 mr-3 h-6 w-6" />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800">External Wallet</p>
-                      <p className="text-xs text-gray-500">Send money from external digital wallets to anyone</p>
-                    </div>
-                  </button>
+  
                   
                   <button
                     onClick={() => handlePaymentMethodSelect('bank_transfer')}

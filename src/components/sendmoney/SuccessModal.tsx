@@ -8,6 +8,8 @@ interface SuccessModalProps {
   receiverUsername: string;
   onClose: () => void;
   isRecurring?: boolean;
+  transactionId?: string;
+  timestamp?: string;
 }
 
 const SuccessModal: React.FC<SuccessModalProps> = ({ 
@@ -16,22 +18,45 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
   receiver, 
   receiverUsername, 
   onClose,
-  isRecurring = false 
+  isRecurring = false,
+  transactionId: propTransactionId,
+  timestamp: propTimestamp
 }) => {
   const [transactionId, setTransactionId] = useState<string>('');
+  const [timestamp, setTimestamp] = useState<string>('');
+  
+  // Format timestamp to a more readable format
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true
+      });
+    } catch (error) {
+      return dateString;
+    }
+  };
   
   useEffect(() => {
     if (show) {
       // Try to get values from localStorage in case they were set by the payment handler
-      const storedReceiver = localStorage.getItem('transferReceiver') || receiver;
-      const storedUsername = localStorage.getItem('transferReceiverUsername') || receiverUsername;
-      const storedTransactionId = localStorage.getItem('transactionId') || '';
+      const storedTransactionId = propTransactionId || localStorage.getItem('transactionId') || '';
+      const storedTimestamp = propTimestamp || localStorage.getItem('transactionTimestamp') || '';
       
       if (storedTransactionId) {
         setTransactionId(storedTransactionId);
       }
+      
+      if (storedTimestamp) {
+        setTimestamp(storedTimestamp);
+      }
     }
-  }, [show, receiver, receiverUsername]);
+  }, [show, receiver, receiverUsername, propTransactionId, propTimestamp]);
 
   if (!show) return null;  const displayReceiver = localStorage.getItem('transferReceiver') || receiver;
   const displayUsername = localStorage.getItem('transferReceiverUsername') || receiverUsername;
@@ -84,12 +109,17 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
             <p className="text-sm text-gray-600 mb-1">Recipient</p>
             <p className="text-lg font-semibold text-gray-900">{displayUsername}</p>
             <p className="text-xs text-gray-500">{displayReceiver}</p>
-          </div>
-
-          {transactionId && (
+          </div>          {transactionId && (
             <div className="bg-gray-50 p-3 rounded-md">
               <p className="text-sm text-gray-600 mb-1">Transaction ID</p>
               <p className="text-md font-medium text-gray-900">{transactionId}</p>
+            </div>
+          )}
+          
+          {timestamp && (
+            <div className="bg-gray-50 p-3 rounded-md">
+              <p className="text-sm text-gray-600 mb-1">Date & Time</p>
+              <p className="text-md font-medium text-gray-900">{formatDate(timestamp)}</p>
             </div>
           )}
           

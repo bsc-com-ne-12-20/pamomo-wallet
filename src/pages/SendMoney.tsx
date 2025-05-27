@@ -247,11 +247,19 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
           'Content-Type': 'application/json',
         }
       });      if (response.status === 201) {
+        console.log('Transaction response:', response.data);
+        // Extract transaction details from response
+        const transactionData = response.data;
+        const transId = transactionData?.trans_id || '';
+        const timestamp = transactionData?.time_stamp || new Date().toISOString();
+        
         // Store data for success popup - properly format the amount
         const formattedAmount = parseFloat(amount) ? parseFloat(amount).toString() : "0";
         localStorage.setItem('transferAmount', formattedAmount);
         localStorage.setItem('transferReceiver', receiver);
         localStorage.setItem('transferReceiverUsername', receiverUsername);
+        localStorage.setItem('transactionId', transId);
+        localStorage.setItem('transactionTimestamp', timestamp);
         
         // Also store last transaction data
         localStorage.setItem('lastTransactionAmount', amount);
@@ -1522,15 +1530,15 @@ const SendMoney: React.FC<SendMoneyProps> = ({ onLogout, isVerified }) => {
           onConfirm={confirmQrCode}
           onCancel={cancelQrCode}
           isLoading={fetchingUsername}
-        />
-
-        <SuccessModal
+        />        <SuccessModal
           show={showSuccessPopup}
           amount={parseFloat(amount) ? parseFloat(amount).toString() : "0"}
           receiver={receiver}
           receiverUsername={receiverUsername}
           onClose={handlePopupClose}
           isRecurring={makeRecurring}
+          transactionId={localStorage.getItem('transactionId') || ''}
+          timestamp={localStorage.getItem('transactionTimestamp') || ''}
         />
       </div>
     </div>

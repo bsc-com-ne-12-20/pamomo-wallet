@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft, User, PlusCircle } from 'lucide-react';
 import Loader2 from '../components/Loader2';
+import DepositSuccessModal from '../components/deposit/DepositSuccessModal';
 
 interface DepositMoneyProps {
   username: string;
@@ -11,7 +12,7 @@ interface DepositMoneyProps {
   setTransactions: (transactions: any[]) => void;
 }
 
-const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
+const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -19,6 +20,14 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const userEmail = localStorage.getItem('email') || '';
+  
+  // Add state for the success modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState({
+    transactionId: '',
+    amount: '',
+    timestamp: ''
+  });
 
   useEffect(() => {
     // Check if email exists
@@ -40,8 +49,7 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
         setError('Transaction information missing. Please try again.');
       }
     }
-  }, [location, userEmail]);
-  const verifyPayment = async (txRef: string, email: string) => {
+  }, [location, userEmail]);  const verifyPayment = async (txRef: string, email: string) => {
     try {
       console.log(`🔍 Verifying deposit payment for transaction: ${txRef} for user ${email}`);
       const response = await fetch(`https://api.paychangu.com/verify-payment/${txRef}`, {
@@ -61,8 +69,27 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
         const deductedAmount = originalAmount * 0.97; // Apply 3% fee
         console.log(`💰 Original amount: ${originalAmount}, After 3% fee: ${deductedAmount}`);
         
-        try {
-          await sendPaymentDetails(email, deductedAmount);
+        try {          const depositResult = await sendPaymentDetails(email, deductedAmount);
+          
+          if (depositResult && depositResult.length > 0) {
+            // Set transaction details from the API response
+            setTransactionDetails({
+              transactionId: depositResult[0].transaction_id || txRef,
+              amount: depositResult[0].amount || deductedAmount.toFixed(2),
+              timestamp: depositResult[0].time_stamp || new Date().toISOString()
+            });
+          } else {
+            // Fallback if we don't have detailed information
+            setTransactionDetails({
+              transactionId: txRef,
+              amount: deductedAmount.toFixed(2),
+              timestamp: new Date().toISOString()
+            });
+          }
+          
+          // Show the success modal
+          setShowSuccessModal(true);
+          
           setSuccess('Payment successful. Amount has been added to your account.');
           localStorage.removeItem('depositAmount');
         } catch (depositError: any) {
@@ -79,8 +106,14 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
     } finally {
       setIsLoading(false);
     }
-  };
-  const sendPaymentDetails = async (email: string, amount: number) => {
+  };  interface DepositResponse {
+    transaction_id: string;
+    amount: string;
+    time_stamp: string;
+    trans_type: string;
+  }
+
+  const sendPaymentDetails = async (email: string, amount: number): Promise<DepositResponse[] | null> => {
     try {
       // Fix the API endpoint URL - adding trailing slash which is required
       const response = await fetch('https://mtima.onrender.com/api/v1/dpst/', {
@@ -102,10 +135,29 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
       }
 
       setSuccess('Payment details processed and amount updated.');
+      
+      // Parse and return the response
+      const responseData = await response.json();
+      return responseData as DepositResponse[];
     } catch (err) {
       setError('Failed to send payment details. Please try again.');
       console.error(err);
+      return null;
     }
+  };
+  const handleCloseSuccessModal = () => {
+    setShowSuccessModal(false);
+    navigate('/dashboard');
+  };
+
+  // For testing purposes - can be removed in production
+  const testSuccessModal = () => {
+    setTransactionDetails({
+      transactionId: "DEMO" + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
+      amount: amount || "1000.00",
+      timestamp: new Date().toISOString()
+    });
+    setShowSuccessModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -254,10 +306,25 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ username, onLogout }) => {
                   </>
                 )}
               </button>
+                {/* For testing only - comment out or remove this button in production */}
+              <button 
+                type="button"
+                onClick={testSuccessModal}
+                className="mt-2 w-full border border-gray-300 text-gray-700 py-1 px-4 rounded-md text-sm hover:bg-gray-100"
+              >
+                Test Success Modal
+              </button>
             </form>
           </div>
-        )}
-      </div>
+        )}      </div>
+        {/* Success Modal */}
+      <DepositSuccessModal
+        show={showSuccessModal}
+        amount={transactionDetails.amount}
+        transactionId={transactionDetails.transactionId}
+        timestamp={transactionDetails.timestamp}
+        onClose={handleCloseSuccessModal}
+      />
     </div>
   );
 };

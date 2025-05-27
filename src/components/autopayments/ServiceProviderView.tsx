@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Lightbulb, WifiIcon, Phone, Home, ShoppingBag, Car, Landmark, Zap, Droplet, Wifi, SearchIcon, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Lightbulb, WifiIcon, Phone, Home, ShoppingBag, Car, Landmark, Zap, Droplet, Wifi, SearchIcon, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 // Import service provider logos
 import srwbLogo from '../images/serviceprov/srwb.jpg';
@@ -275,8 +275,7 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
       />
     );
   }
-  
-  const filteredProviders = filterProviders(serviceProviders);
+    const filteredProviders = filterProviders(serviceProviders);
   
   return (
     <div>
@@ -289,6 +288,24 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
           Back to Selection
         </button>
         <h3 className="font-medium text-lg text-gray-800 mt-4">Select Service Provider</h3>
+      </div>
+      
+      {/* Coming Soon Notice */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <AlertCircle className="h-5 w-5 text-yellow-600" aria-hidden="true" />
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-yellow-800">Coming Soon!</h3>
+            <div className="mt-2 text-sm text-yellow-700">
+              <p>
+                We're actively integrating with our service provider partners. 
+                Full functionality will be available shortly. Thank you for your patience.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -330,8 +347,7 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
       {/* Service Providers Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredProviders.length > 0 ? (
-          filteredProviders.map((provider) => (
-            <button
+          filteredProviders.map((provider) => (            <button
               key={provider.id}
               onClick={() => {
                 // Check if this is a specific provider result (from search)
@@ -352,8 +368,13 @@ const ServiceProviderView: React.FC<ServiceProviderViewProps> = ({
                   handleServiceTypeSelect(provider.id);
                 }
               }}
-              className="flex items-center p-4 border rounded-lg hover:bg-purple-50 transition-colors"
+              className="flex items-center p-4 border rounded-lg hover:bg-purple-50 transition-colors relative"
             >
+              {/* Coming Soon Badge */}
+              <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full border border-yellow-200">
+                Coming Soon
+              </div>
+              
               <div className="p-3 rounded-full bg-purple-100 mr-3">
                 {provider.icon}
               </div>
@@ -443,14 +464,26 @@ const WaterUtilityProvidersView: React.FC<WaterUtilityProvidersViewProps> = ({ p
         >
           <ArrowLeft size={20} className="mr-2" />
           Back to Service Types
-        </button>
-        <h3 className="font-medium text-lg text-gray-800 mt-4">Water Utility Providers</h3>
+        </button>        <h3 className="font-medium text-lg text-gray-800 mt-4">Water Utility Providers</h3>
         <p className="text-sm text-gray-500">Choose your water utility provider</p>
       </div>
 
+      {/* Coming Soon Notice */}
+      <div className="mb-6 p-4 border border-yellow-200 bg-yellow-50 rounded-md">
+        <div className="flex items-start">
+          <AlertCircle size={20} className="text-yellow-500 mr-2 mt-1 flex-shrink-0" />
+          <div>
+            <h4 className="font-medium text-yellow-800">Coming Soon - June 2025</h4>
+            <p className="text-sm text-yellow-700">
+              We're currently integrating with water utility providers across Malawi. 
+              You can explore the services that will be available soon.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {providers.map(provider => (
-          <button
+        {providers.map(provider => (            <button
             key={provider.id}
             onClick={() => onSelectProvider({
               id: provider.id,
@@ -458,8 +491,12 @@ const WaterUtilityProvidersView: React.FC<WaterUtilityProvidersViewProps> = ({ p
               icon: provider.logo || <Droplet size={24} className="text-blue-500" />,
               email: provider.email
             })}
-            className="flex items-center p-4 border rounded-lg hover:bg-blue-50 transition-colors"
+            className="flex items-center p-4 border rounded-lg hover:bg-blue-50 transition-colors relative"
           >
+            {/* Coming Soon Badge */}
+            <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full border border-yellow-200">
+              Coming Soon
+            </div>
             <div className="p-2 rounded-full bg-blue-100 mr-3">
               {provider.logo || <Droplet size={24} className="text-blue-500" />}
             </div>
@@ -491,14 +528,26 @@ const ElectricityProvidersView: React.FC<ElectricityProvidersViewProps> = ({ pro
         >
           <ArrowLeft size={20} className="mr-2" />
           Back to Service Types
-        </button>
-        <h3 className="font-medium text-lg text-gray-800 mt-4">Electricity Providers</h3>
+        </button>        <h3 className="font-medium text-lg text-gray-800 mt-4">Electricity Providers</h3>
         <p className="text-sm text-gray-500">Choose your electricity provider</p>
       </div>
 
+      {/* Coming Soon Notice */}
+      <div className="mb-6 p-4 border border-yellow-200 bg-yellow-50 rounded-md">
+        <div className="flex items-start">
+          <AlertCircle size={20} className="text-yellow-500 mr-2 mt-1 flex-shrink-0" />
+          <div>
+            <h4 className="font-medium text-yellow-800">Coming Soon - June 2025</h4>
+            <p className="text-sm text-yellow-700">
+              We're currently integrating with electricity providers in Malawi.
+              You can explore the services that will be available soon.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {providers.map(provider => (
-          <button
+        {providers.map(provider => (            <button
             key={provider.id}
             onClick={() => onSelectProvider({
               id: provider.id,
@@ -506,8 +555,12 @@ const ElectricityProvidersView: React.FC<ElectricityProvidersViewProps> = ({ pro
               icon: provider.logo || <Lightbulb size={24} className="text-yellow-500" />,
               email: provider.email
             })}
-            className="flex items-center p-4 border rounded-lg hover:bg-yellow-50 transition-colors"
+            className="flex items-center p-4 border rounded-lg hover:bg-yellow-50 transition-colors relative"
           >
+            {/* Coming Soon Badge */}
+            <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full border border-yellow-200">
+              Coming Soon
+            </div>
             <div className="p-2 rounded-full bg-yellow-100 mr-3">
               {provider.logo || <Lightbulb size={24} className="text-yellow-500" />}
             </div>
@@ -539,14 +592,26 @@ const InternetProvidersView: React.FC<InternetProvidersViewProps> = ({ providers
         >
           <ArrowLeft size={20} className="mr-2" />
           Back to Service Types
-        </button>
-        <h3 className="font-medium text-lg text-gray-800 mt-4">Internet Service Providers</h3>
+        </button>        <h3 className="font-medium text-lg text-gray-800 mt-4">Internet Service Providers</h3>
         <p className="text-sm text-gray-500">Choose your internet provider</p>
       </div>
 
+      {/* Coming Soon Notice */}
+      <div className="mb-6 p-4 border border-yellow-200 bg-yellow-50 rounded-md">
+        <div className="flex items-start">
+          <AlertCircle size={20} className="text-yellow-500 mr-2 mt-1 flex-shrink-0" />
+          <div>
+            <h4 className="font-medium text-yellow-800">Coming Soon - June 2025</h4>
+            <p className="text-sm text-yellow-700">
+              We're currently integrating with internet service providers across Malawi.
+              You can explore the services that will be available soon.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {providers.map(provider => (
-          <button
+        {providers.map(provider => (            <button
             key={provider.id}
             onClick={() => onSelectProvider({
               id: provider.id,
@@ -554,8 +619,12 @@ const InternetProvidersView: React.FC<InternetProvidersViewProps> = ({ providers
               icon: provider.logo || <Wifi size={24} className="text-green-500" />,
               email: provider.email
             })}
-            className="flex items-center p-4 border rounded-lg hover:bg-green-50 transition-colors"
+            className="flex items-center p-4 border rounded-lg hover:bg-green-50 transition-colors relative"
           >
+            {/* Coming Soon Badge */}
+            <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full border border-yellow-200">
+              Coming Soon
+            </div>
             <div className="p-2 rounded-full bg-green-100 mr-3">
               {provider.logo || <Wifi size={24} className="text-green-500" />}
             </div>
@@ -621,26 +690,33 @@ const ComingSoonView: React.FC<ComingSoonViewProps> = ({ onBack, category }) => 
           <ArrowLeft size={20} className="mr-2" />
           Back to Service Types
         </button>
-      </div>
-
-      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-        <div className="bg-purple-100 p-6 rounded-full mb-6">
+      </div>      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="bg-purple-100 p-6 rounded-full mb-6 shadow-md">
           {getCategoryIcon()}
         </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">{getCategoryName()} Coming Soon</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">
+          {getCategoryName()} <span className="text-[#8928A4]">Coming Soon</span>
+        </h2>
         <p className="text-gray-600 max-w-md mb-6">
           We're working diligently to bring you a comprehensive selection of {category.toLowerCase()} service providers. 
           Our team is establishing partnerships to offer you seamless payment experiences.
         </p>
-        <div className="bg-gray-100 rounded-lg p-4 mb-6 max-w-md">
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-5 mb-6 max-w-md shadow-sm border border-purple-100">
+          <div className="flex items-center mb-3">
+            <AlertCircle className="h-5 w-5 text-[#8928A4] mr-2" />
+            <h3 className="font-medium text-gray-800">What to expect</h3>
+          </div>
           <p className="text-sm text-gray-700">
-            <strong>What to expect:</strong> In the coming weeks, we'll be adding trusted {category.toLowerCase()} providers to our platform, 
+            <strong>Launch Date:</strong> June 2025
+          </p>
+          <p className="text-sm text-gray-700 mt-2">
+            We'll be adding trusted {category.toLowerCase()} providers to our platform, 
             allowing you to conveniently manage all your payments in one place.
           </p>
         </div>
         <button
           onClick={onBack}
-          className="px-6 py-3 bg-[#8928A4] hover:bg-[#7a2391] text-white font-medium rounded-md transition-colors"
+          className="px-6 py-3 bg-[#8928A4] hover:bg-[#7a2391] text-white font-medium rounded-md transition-colors shadow-md"
         >
           Explore Other Categories
         </button>

@@ -55,7 +55,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
                         className="flex items-center space-x-2 w-full text-left px-4 py-2 hover:bg-gray-100 transition"
                       >
                         <MessageSquare size={16} />
-                        <span>Financial Support</span>
+                        <span>Customer Support</span>
                       </button>
                     </li>
                     <li>

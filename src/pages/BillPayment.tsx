@@ -355,18 +355,35 @@ const BillPayment: React.FC<BillPaymentProps> = ({ username, onLogout }) => {
         );
     }
   };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar onLogout={handleLogout} />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
+      <div className="container mx-auto px-4 py-8">        <div className="mb-6">
           {stage !== 'select-provider' && (
             <h2 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center">
-              <Landmark className="mr-2" size={24} /> Bill Payment
+              <Landmark className="mr-2" size={24} /> Bill Payment 
+              <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full border border-blue-200">Beta</span>
             </h2>
           )}
+        </div>
+        
+        {/* Coming Soon Banner */}
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-md shadow-sm">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-blue-500" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-blue-800">
+                Bill Payment Services Coming Soon!
+              </p>
+              <p className="mt-1 text-sm text-blue-700">
+                We're in the process of integrating with service providers across Malawi to enable seamless bill payments.
+                This feature will be fully available soon.
+              </p>
+            </div>
+          </div>
         </div>
         
         {renderContent()}

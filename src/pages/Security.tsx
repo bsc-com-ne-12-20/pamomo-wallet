@@ -175,7 +175,7 @@ const Security: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Security Settings</h2>
 
         {/* Change Password Section */}
-        <div className="mb-8">
+        {/* <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Change Password</h3>
           <form onSubmit={handleChangePassword}>
             <div className="mb-4">
@@ -223,7 +223,7 @@ const Security: React.FC = () => {
               Change Password
             </button>
           </form>
-        </div>
+        </div> */}
 
         {/* Enable 2FA Section */}
         <div className="mb-8">

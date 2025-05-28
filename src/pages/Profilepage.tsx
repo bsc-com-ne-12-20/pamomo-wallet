@@ -145,12 +145,20 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email }),
-      });
-      
-      if (response.ok) {
+      });      if (response.ok) {
         const data = await response.json();
-        setSubscription(data);
-      } else {
+        console.log('Subscription API response:', data); // Add logging for troubleshooting
+        
+        // Map the API response fields to the component's expected structure
+        setSubscription({
+          plan: data.plan,
+          period: data.period,
+          status: data.is_active ? 'ACTIVE' : 'INACTIVE',
+          expiry_date: data.end_date,  // Using end_date from API as expiry_date
+          auto_renew: data.auto_renew,
+          current_balance: data.current_balance
+        });
+      }else {
         // Default to free plan if fetch fails
         setSubscription({
           plan: 'FREE',
@@ -165,8 +173,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
           // Show a toast that we're using demo data
           toast.info('Using default subscription data - API unavailable');
         }
-      }
-    } catch (error) {
+      }    } catch (error) {
       console.error('Failed to fetch subscription details:', error);
       // Default to free plan if fetch fails
       setSubscription({
@@ -228,6 +235,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
       };
       return date.toLocaleDateString(undefined, options);
     } catch (error) {
+      console.error('Date formatting error:', error, 'for date:', dateString);
       return dateString;
     }
   };
@@ -380,15 +388,20 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
       </div>
     </div>
   );
-
-  const renderInfoItem = (icon: React.ReactNode, label: string, value: string) => (
+  const renderInfoItem = (icon: React.ReactNode, label: string, value: string | number | boolean) => (
     <div className="flex items-start group p-2 rounded-lg transition-colors hover:bg-purple-50">
       <div className="flex-shrink-0 h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
         {icon}
       </div>
       <div className="ml-4">
         <h4 className="text-sm font-medium text-gray-500">{label}</h4>
-        <p className="text-gray-900 mt-1 font-medium">{value || 'Not provided'}</p>
+        <p className="text-gray-900 mt-1 font-medium">
+          {value === undefined || value === null 
+            ? 'Not provided' 
+            : typeof value === 'boolean'
+              ? value ? 'Enabled' : 'Disabled'
+              : String(value)}
+        </p>
       </div>
     </div>
   );
@@ -485,7 +498,7 @@ const PersonalProfile: React.FC<PersonalProfileProps> = ({ username, onLogout })
         <div className="space-y-4 mb-6">
           {renderInfoItem(<Clock size={18} className="text-purple-600" />, "Expires On", formatDate(subscription.expiry_date))}
           {renderInfoItem(<Shield size={18} className="text-purple-600" />, "Transaction Limit", getTransactionLimit())}
-          {renderInfoItem(<CreditCard size={18} className="text-purple-600" />, "Auto-Renew", subscription.auto_renew ? 'Enabled' : 'Disabled')}
+          {renderInfoItem(<CreditCard size={18} className="text-purple-600" />, "Auto-Renew", subscription.auto_renew)}
           {subscription.current_balance !== undefined && 
             renderInfoItem(<Crown size={18} className="text-purple-600" />, "Current Balance", `MWK ${subscription.current_balance.toLocaleString()}`)
           }

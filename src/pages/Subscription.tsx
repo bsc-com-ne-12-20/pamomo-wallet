@@ -130,11 +130,20 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
 
       const response = await axios.post(`${API_BASE_URL}/subscriptions/check-subscription/`, {
         email
-      });
-
-      if (response.status === 200) {
+      });      if (response.status === 200) {
         const data = response.data;
-        setSubscriptionDetails(data);
+        console.log('Subscription API response:', data); // Add logging for troubleshooting
+        
+        // Map API response fields to the component's expected structure
+        setSubscriptionDetails({
+          plan: data.plan,
+          period: data.period,
+          status: data.is_active ? 'ACTIVE' : 'INACTIVE',
+          expiry_date: data.end_date,  // Use end_date from API as expiry_date
+          auto_renew: data.auto_renew,
+          current_balance: data.current_balance
+        });
+        
         setSelectedPlan(data.plan);
         
         if (data.period) {
@@ -240,8 +249,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
       fetchPaymentHistory();
     }
     setShowPaymentHistory(!showPaymentHistory);
-  };
-  const formatDate = (dateString: string) => {
+  };  const formatDate = (dateString: string) => {
     if (!dateString || dateString === 'NEVER') return 'Never';
     try {
       const date = new Date(dateString);
@@ -257,7 +265,8 @@ const Subscription: React.FC<SubscriptionProps> = ({ username, onLogout }) => {
         hour: '2-digit',
         minute: '2-digit'
       });
-    } catch {
+    } catch (error) {
+      console.error('Date formatting error:', error, 'for date:', dateString);
       return 'Invalid date';
     }
   };

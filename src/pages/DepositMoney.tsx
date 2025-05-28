@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft, User, PlusCircle } from 'lucide-react';
-import Loader2 from '../components/Loader2';
+import SimpleLoader from '../components/autopayments/SimpleLoader';
 import DepositSuccessModal from '../components/deposit/DepositSuccessModal';
+import DepositConfirmationModal from '../components/deposit/DepositConfirmationModal';
 
 interface DepositMoneyProps {
   username: string;
@@ -12,22 +13,38 @@ interface DepositMoneyProps {
   setTransactions: (transactions: any[]) => void;
 }
 
-const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {
-  const [amount, setAmount] = useState('');
+const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {  const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const userEmail = localStorage.getItem('email') || '';
+  const MAX_DEPOSIT_AMOUNT = 1400000;
   
-  // Add state for the success modal
+  // Modal states
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState({
     transactionId: '',
     amount: '',
     timestamp: ''
   });
+  // Live validation for deposit amount
+  useEffect(() => {
+    if (amount) {
+      const amountNum = parseFloat(amount);
+      if (amountNum > MAX_DEPOSIT_AMOUNT) {
+        setError(`Amount exceeds the maximum deposit limit of MK ${MAX_DEPOSIT_AMOUNT.toLocaleString()}`);
+      } else if (isNaN(amountNum) || amountNum <= 0) {
+        setError('Please enter a valid amount');
+      } else {
+        setError('');
+      }
+    } else {
+      setError('');
+    }
+  }, [amount]);
 
   useEffect(() => {
     // Check if email exists
@@ -144,48 +161,22 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {
       console.error(err);
       return null;
     }
-  };
-  const handleCloseSuccessModal = () => {
+  };  const handleCloseSuccessModal = () => {
     setShowSuccessModal(false);
     navigate('/dashboard');
   };
-
-  // For testing purposes - can be removed in production
-  const testSuccessModal = () => {
-    setTransactionDetails({
-      transactionId: "DEMO" + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
-      amount: amount || "1000.00",
-      timestamp: new Date().toISOString()
-    });
-    setShowSuccessModal(true);
+  
+  // Add new handler methods for confirmation
+  const handleCancelDeposit = () => {
+    setShowConfirmationModal(false);
   };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
+    const handleConfirmDeposit = async () => {
+    console.log('Confirm deposit clicked, hiding modal and starting payment process');
+    setShowConfirmationModal(false);
     setIsLoading(true);
-
-    if (!amount) {
-      setError('Please enter an amount');
-      setIsLoading(false);
-      return;
-    }
-
-    if (!userEmail) {
-      setError('User email not found. Please log in again.');
-      setIsLoading(false);
-      return;
-    }
-
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      setError('Please enter a valid amount');
-      setIsLoading(false);
-      return;
-    }
-
+    
     try {
+      const amountNum = parseFloat(amount);
       const response = await fetch('https://api.paychangu.com/payment', {
         method: 'POST',
         headers: {
@@ -215,6 +206,42 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {
       console.error(err);
       setIsLoading(false);
     }
+  };  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    
+    // Add debugging
+    console.log('Form submitted, checking validation...');
+
+    if (!amount) {
+      setError('Please enter an amount');
+      return;
+    }
+
+    if (!userEmail) {
+      setError('User email not found. Please log in again.');
+      return;
+    }
+    
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
+    if (amountNum > MAX_DEPOSIT_AMOUNT) {
+      setError(`Amount exceeds the maximum deposit limit of MK ${MAX_DEPOSIT_AMOUNT.toLocaleString()}`);
+      return;
+    }
+    
+    // Show confirmation modal instead of proceeding immediately
+    console.log('Validation passed, showing confirmation modal...');
+    setShowConfirmationModal(true);
+    console.log('showConfirmationModal set to:', true);
+    
+    // Prevent any other actions from happening until the confirmation modal is handled
+    return;
   };
 
   return (
@@ -227,11 +254,9 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {
           className="flex items-center px-4 py-2 rounded-md bg-white text-[#8928A4] border border-[#8928A4] mb-6 hover:bg-[#f9f0fc] transition-colors duration-200 shadow-sm font-medium">
           <ArrowLeft size={16} className="mr-2" />
           Back to Dashboard
-        </button>
-
-        {isLoading ? (
+        </button>        {isLoading ? (
           <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto flex flex-col items-center justify-center min-h-[300px]">
-            <Loader2 />
+            <SimpleLoader size="large" />
             <p className="mt-4 text-gray-600 text-sm">Processing your deposit request...</p>
           </div>
         ) : (
@@ -263,22 +288,29 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {
               <div className="mb-6">
                 <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
                   Amount
-                </label>
-                <div className="relative">
+                </label>                <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <p className="text-gray-400"><b>MK</b></p>
                   </div>
                   <input
                     type="number"
                     id="amount"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8928A4] focus:ring-[#8928A4] sm:text-sm border p-2"
+                    className={`pl-10 block w-full rounded-md shadow-sm focus:ring-[#8928A4] sm:text-sm border p-2 ${
+                      parseFloat(amount) > MAX_DEPOSIT_AMOUNT 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:border-[#8928A4]'
+                    }`}
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     min="0.01"
+                    max={MAX_DEPOSIT_AMOUNT}
                     step="0.01"
                   />
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Maximum deposit amount: MK {MAX_DEPOSIT_AMOUNT.toLocaleString()}
+                </p>
               </div>
 
               {error && (
@@ -306,24 +338,24 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {
                   </>
                 )}
               </button>
-                {/* For testing only - comment out or remove this button in production */}
-              <button 
-                type="button"
-                onClick={testSuccessModal}
-                className="mt-2 w-full border border-gray-300 text-gray-700 py-1 px-4 rounded-md text-sm hover:bg-gray-100"
-              >
-                Test Success Modal
-              </button>
             </form>
           </div>
         )}      </div>
-        {/* Success Modal */}
-      <DepositSuccessModal
+        {/* Success Modal */}      <DepositSuccessModal
         show={showSuccessModal}
         amount={transactionDetails.amount}
         transactionId={transactionDetails.transactionId}
         timestamp={transactionDetails.timestamp}
         onClose={handleCloseSuccessModal}
+      />
+      
+      {/* Confirmation Modal */}
+      <DepositConfirmationModal
+        show={showConfirmationModal}
+        amount={amount}
+        onConfirm={handleConfirmDeposit}
+        onCancel={handleCancelDeposit}
+        isLoading={isLoading}
       />
     </div>
   );

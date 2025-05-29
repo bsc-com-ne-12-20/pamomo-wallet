@@ -29,8 +29,7 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {  const [am
     transactionId: '',
     amount: '',
     timestamp: ''
-  });
-  // Live validation for deposit amount
+  });  // Live validation for deposit amount
   useEffect(() => {
     if (amount) {
       const amountNum = parseFloat(amount);
@@ -38,6 +37,8 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {  const [am
         setError(`Amount exceeds the maximum deposit limit of MK ${MAX_DEPOSIT_AMOUNT.toLocaleString()}`);
       } else if (isNaN(amountNum) || amountNum <= 0) {
         setError('Please enter a valid amount');
+      } else if (amountNum < 50) {
+        setError('Minimum deposit amount is MK 50');
       } else {
         setError('');
       }
@@ -230,6 +231,11 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {  const [am
       return;
     }
 
+    if (amountNum < 50) {
+      setError('Minimum deposit amount is MK 50');
+      return;
+    }
+
     if (amountNum > MAX_DEPOSIT_AMOUNT) {
       setError(`Amount exceeds the maximum deposit limit of MK ${MAX_DEPOSIT_AMOUNT.toLocaleString()}`);
       return;
@@ -307,10 +313,14 @@ const DepositMoney: React.FC<DepositMoneyProps> = ({ onLogout }) => {  const [am
                     max={MAX_DEPOSIT_AMOUNT}
                     step="0.01"
                   />
+                </div>                <div className="mt-1 flex justify-between">
+                  <p className="text-xs text-gray-500">
+                    Minimum: MK 50
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Maximum: MK {MAX_DEPOSIT_AMOUNT.toLocaleString()}
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Maximum deposit amount: MK {MAX_DEPOSIT_AMOUNT.toLocaleString()}
-                </p>
               </div>
 
               {error && (
